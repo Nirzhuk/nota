@@ -4,6 +4,7 @@
 
 #[cfg(target_os = "macos")]
 mod hover;
+mod images;
 
 use serde_json::Value;
 use std::{collections::{HashMap, HashSet}, fs, io::Read, path::PathBuf, process::Stdio, sync::Mutex};
@@ -15,6 +16,7 @@ use tauri_plugin_opener::OpenerExt;
 
 const ADDR: &str = "127.0.0.1:4317";
 const MAC: bool = cfg!(target_os = "macos");
+const BROWSER_UA: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15";
 
 struct Store {
     path: PathBuf,
@@ -22,7 +24,7 @@ struct Store {
     folders_path: PathBuf,
     folders: Mutex<Vec<String>>,
     settings_path: PathBuf,
-    settings: Mutex<serde_json::Map<String, Value>>, // sound, hoverKey, theme (see settings.tsx)
+    settings: Mutex<serde_json::Map<String, Value>>, // sound, hoverKey, theme, keepImages (see settings.tsx)
     removed_path: PathBuf,
     removed: Mutex<HashSet<String>>, // ids the user removed, so imports don't bring them back
 }
@@ -201,6 +203,7 @@ fn list_notes(store: State<Store>) -> Vec<Value> {
 fn import_notes(app: AppHandle, store: State<Store>, notes: Vec<Value>) -> Result<usize, String> {
     let count = notes.len();
     enrich(&app, &notes);
+    images::queue_notes(&app, &notes);
     if store.upsert(notes).map_err(|e| e.to_string())? {
         let _ = app.emit("notes-changed", ());
     }
@@ -313,6 +316,11 @@ fn listen(app: AppHandle) {
         // X-Nota forces a CORS preflight, so random web pages can't post here
         let ok_header = req.headers().iter().any(|h| h.field.equiv("X-Nota"));
         let status = match (req.method(), req.url(), ok_header) {
+            // Only the extension sends X-Nota, so this also tells the app it's installed.
+            (tiny_http::Method::Get, "/ping", true) => {
+                let _ = app.emit("extension-seen", ());
+                200
+            }
             (tiny_http::Method::Get, "/ping", _) => 200,
             (tiny_http::Method::Post, "/notes", true) => {
                 let mut body = Vec::new();
@@ -331,6 +339,7 @@ fn listen(app: AppHandle) {
 
 fn save(app: &AppHandle, notes: Vec<Value>) -> u16 {
     enrich(app, &notes);
+    images::queue_notes(app, &notes);
     match app.state::<Store>().upsert(notes) {
         Ok(changed) => {
             if changed {
@@ -373,6 +382,9 @@ fn enrich(app: &AppHandle, notes: &[Value]) {
             }
             if let Some(i) = image.filter(|_| note.get("images").and_then(Value::as_array).map_or(true, Vec::is_empty)) {
                 note.insert("images".into(), serde_json::json!([i]));
+                if i.starts_with("http") {
+                    images::queue_url(&app, i);
+                }
             }
             let _ = store.save(&notes);
             drop(notes);
@@ -389,7 +401,7 @@ fn fetch_og(url: &str) -> Option<(Option<String>, Option<String>, Option<String>
     std::os::windows::process::CommandExt::creation_flags(&mut curl, 0x0800_0000); // CREATE_NO_WINDOW: no console flash
     let mut curl = curl
         .args(["-sL", "--max-time", "8", "--compressed", "-H", "Accept-Language: en"])
-        .args(["-A", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15"])
+        .args(["-A", BROWSER_UA])
         .arg(url)
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
@@ -589,8 +601,14 @@ fn main() {
     builder
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, None))
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        // card.tsx loads images through here first; off the main thread so a grid of files can't stall the UI
+        .register_asynchronous_uri_scheme_protocol("notaimg", |ctx, request, responder| {
+            let app = ctx.app_handle().clone();
+            std::thread::spawn(move || responder.respond(images::serve(&app, request.uri().path())));
+        })
         .on_menu_event(|app, e| match e.id().as_ref() {
             "reveal" => reveal_notes(app.clone()),
             // search / filter:* are handled by the frontend
@@ -601,7 +619,8 @@ fn main() {
         .setup(|app| {
             let dir = app.path().app_data_dir()?;
             fs::create_dir_all(&dir)?;
-            app.manage(Store::load(dir));
+            app.manage(Store::load(dir.clone()));
+            images::start(app.handle(), dir.join("images"));
             apply_theme(app.handle());
             global_shortcuts(app.handle());
             let handle = app.handle().clone();
@@ -618,7 +637,9 @@ fn main() {
             rename_folder,
             get_settings,
             set_settings,
-            reveal_notes
+            reveal_notes,
+            images::images_size,
+            images::clear_images
         ])
         .run(tauri::generate_context!())
         .expect("error while running nota");

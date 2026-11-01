@@ -1,7 +1,9 @@
 import { memo, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { Menu } from "@tauri-apps/api/menu";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { ArrowSquareOut, Check, Copy, FolderSimple, FolderSimplePlus, LinkSimple, Play, X } from "@phosphor-icons/react";
+import { ArrowSquareOut, Check, Copy, FolderSimple, FolderSimplePlus, LinkSimple, NotePencil, Play, Tag, X } from "@phosphor-icons/react";
 import { SITES, ago, fullDate, linksOf, type Note } from "./notes";
 
 type Props = {
@@ -17,21 +19,44 @@ type Props = {
   onMine: (id: string, mine: string) => void;
   onDrag: (dragging: boolean) => void;
   onTag: (tag: string) => void;
+  onTags: (id: string, tags: string[]) => void;
 };
+
+type PopKind = "note" | "tag";
 
 const onFocus = (cb: () => void) => {
   window.addEventListener("focus", cb);
   return () => window.removeEventListener("focus", cb);
 };
 
+// Offline copy first (images.rs). With no copy, fall back to the remote link; if that's dead too, hide the image.
+function Picture({ src, className, alt }: { src: string; className?: string; alt: string }) {
+  const [remote, setRemote] = useState(false);
+  return (
+    <img
+      className={className}
+      src={remote ? src : convertFileSrc(src, "notaimg")}
+      alt={alt}
+      loading="lazy"
+      decoding="async"
+      referrerPolicy="no-referrer"
+      onError={(e) => {
+        if (remote) e.currentTarget.style.display = "none";
+        else setRemote(true);
+      }}
+    />
+  );
+}
+
 // memo(Card) rarely re-renders, so the age label refreshes itself when the window regains focus.
 function Ago({ t }: { t: number }) {
   return <>{useSyncExternalStore(onFocus, () => ago(t))}</>;
 }
 
-export const Card = memo(function Card({ n, folders, isNew, expanded, selected, onToggle, onPlay, onRemove, onMove, onMine, onDrag, onTag }: Props) {
+export const Card = memo(function Card({ n, folders, isNew, expanded, selected, onToggle, onPlay, onRemove, onMove, onMine, onDrag, onTag, onTags }: Props) {
   const [copied, setCopied] = useState(false);
-  const [editing, setEditing] = useState(false);
+  const [pop, setPop] = useState<{ kind: PopKind; at: DOMRect } | null>(null); // open popover, anchored to the tools
+  const tools = useRef<HTMLSpanElement>(null);
   const Glyph = SITES[n.source]?.icon ?? LinkSimple;
   const textRef = useRef<HTMLParagraphElement>(null);
   const [full, setFull] = useState(0); // real text height in px
@@ -61,6 +86,23 @@ export const Card = memo(function Card({ n, folders, isNew, expanded, selected, 
     setTimeout(() => setCopied(false), 1200);
   };
 
+  const openPop = (kind: PopKind) => setPop({ kind, at: tools.current!.getBoundingClientRect() });
+  // Keep focus on mousedown, so a second click on the same icon closes instead of reopening.
+  const popToggle = (kind: PopKind) => ({
+    "aria-expanded": pop?.kind === kind,
+    onMouseDown: (e: React.MouseEvent) => pop?.kind === kind && e.preventDefault(),
+    onClick: () => (pop?.kind === kind ? (document.activeElement as HTMLElement).blur() : openPop(kind)),
+  });
+  const saveNote = (raw: string) => {
+    const mine = raw.trim();
+    if (mine !== (n.mine ?? "")) onMine(n.id, mine);
+  };
+  // Same shape as the import tags (x-archive): lowercase, dashes, no leading #.
+  const addTag = (raw: string) => {
+    const tag = raw.trim().replace(/^#+/, "").replace(/\s+/g, "-").toLowerCase();
+    if (tag && !n.tags?.includes(tag)) onTags(n.id, [...(n.tags ?? []), tag]);
+  };
+
   // native macOS menus: same "Move to" list for the folder button and right-click
   const moveItems = () => [
     { text: "No Folder", checked: !n.folder, action: () => onMove(n.id, null) },
@@ -76,6 +118,11 @@ export const Card = memo(function Card({ n, folders, isNew, expanded, selected, 
       items: [
         { text: "Open Post", action: () => openUrl(n.url) },
         { text: "Move to", items: moveItems() },
+        { text: n.mine ? "Edit Note…" : "Add Note…", action: () => openPop("note") },
+        { text: "Add Tag…", action: () => openPop("tag") },
+        ...(n.tags?.length
+          ? [{ text: "Remove Tag", items: n.tags.map((t) => ({ text: `#${t}`, action: () => onTags(n.id, n.tags!.filter((x) => x !== t)) })) }]
+          : []),
         { item: "Separator" },
         { text: "Remove", action: () => onRemove(n.id) },
       ],
@@ -132,18 +179,7 @@ export const Card = memo(function Card({ n, folders, isNew, expanded, selected, 
       {n.source === "youtube" ? (
         <YouTube id={n.id.slice("youtube:".length)} title={n.title} onPlay={onPlay} />
       ) : (
-        n.images?.map((src) => (
-          <img
-            key={src}
-            className="media"
-            src={src}
-            alt="Attached image"
-            loading="lazy"
-            decoding="async"
-            referrerPolicy="no-referrer"
-            onError={(e) => (e.currentTarget.style.display = "none")}
-          />
-        ))
+        n.images?.map((src) => <Picture key={src} className="media" src={src} alt="Attached image" />)
       )}
 
       {linksOf(n).map((l) => (
@@ -154,54 +190,53 @@ export const Card = memo(function Card({ n, folders, isNew, expanded, selected, 
         </button>
       ))}
 
-      {editing ? (
-        <textarea
-          className="mine"
-          autoFocus
-          rows={3}
-          placeholder="Your note"
-          defaultValue={n.mine ?? ""}
-          onKeyDown={(e) => {
-            e.stopPropagation(); // keep global shortcuts out of the textarea
-            if (e.key === "Escape") e.currentTarget.blur();
-          }}
-          onBlur={(e) => {
-            const v = e.currentTarget.value.trim();
-            if (v !== (n.mine ?? "")) onMine(n.id, v);
-            setEditing(false);
-          }}
-        />
-      ) : n.mine ? (
-        <p className="mine" title="Edit note" onClick={() => setEditing(true)}>
+      {n.mine && (
+        <p className="mine" title="Edit note" onClick={() => openPop("note")}>
           {n.mine}
         </p>
-      ) : (
-        <button className="more" onClick={() => setEditing(true)}>
-          Add note
-        </button>
+      )}
+
+      {pop && (
+        <FieldPopover
+          kind={pop.kind}
+          anchor={pop.at}
+          value={pop.kind === "note" ? (n.mine ?? "") : ""}
+          onDone={(value) => {
+            (pop.kind === "note" ? saveNote : addTag)(value);
+            setPop(null);
+          }}
+        />
       )}
 
       <footer className="bar">
-        <span className="when" title={fullDate(n.savedAt)}>
-          <Ago t={n.savedAt} />
-        </span>
-        {n.folder && (
-          <span className="chip">
-            <FolderSimple size={11} />
-            {n.folder}
+        <span className="chips">
+          <span className="when" title={fullDate(n.savedAt)}>
+            <Ago t={n.savedAt} />
           </span>
-        )}
-        {n.tags?.map((t) => (
-          <button key={t} className="chip tag" onClick={() => onTag(t)}>
-            #{t}
-          </button>
-        ))}
-        <span className="tools">
+          {n.folder && (
+            <span className="chip">
+              <FolderSimple size={11} />
+              {n.folder}
+            </span>
+          )}
+          {n.tags?.map((t) => (
+            <button key={t} className="chip tag" onClick={() => onTag(t)}>
+              #{t}
+            </button>
+          ))}
+        </span>
+        <span className="tools" ref={tools}>
           <button title="Open post" aria-label="Open post in browser" onClick={() => openUrl(n.url)}>
             <ArrowSquareOut size={13} />
           </button>
           <button title="Copy link" aria-label={copied ? "Link copied" : "Copy link"} onClick={copy}>
             {copied ? <Check size={13} /> : <Copy size={13} />}
+          </button>
+          <button title={n.mine ? "Edit note" : "Add note"} aria-label={n.mine ? "Edit note" : "Add note"} {...popToggle("note")}>
+            <NotePencil size={13} />
+          </button>
+          <button title="Add tag" aria-label="Add tag" {...popToggle("tag")}>
+            <Tag size={13} />
           </button>
           <button title="Move to folder" aria-label="Move to folder" aria-haspopup="menu" onClick={folderMenu}>
             <FolderSimplePlus size={13} />
@@ -212,12 +247,50 @@ export const Card = memo(function Card({ n, folders, isNew, expanded, selected, 
   );
 });
 
+// In <body> at a fixed spot, so opening it never moves the cards. Clicking away saves.
+// Enter saves a tag (a note needs it for new lines). Esc cancels a tag but saves a note, so typing isn't lost.
+function FieldPopover({ kind, anchor, value, onDone }: { kind: PopKind; anchor: DOMRect; value: string; onDone: (value: string) => void }) {
+  useEffect(() => {
+    const close = (e: WheelEvent) => {
+      const field = document.activeElement as HTMLElement;
+      if (e.target !== field) field.blur(); // scrolling would leave it floating away from its card
+    };
+    window.addEventListener("wheel", close, { passive: true });
+    return () => window.removeEventListener("wheel", close);
+  }, []);
+  const fitsBelow = anchor.bottom + (kind === "note" ? 130 : 52) < window.innerHeight;
+  const field = {
+    className: "pop-field",
+    style: {
+      right: window.innerWidth - anchor.right,
+      ...(fitsBelow ? { top: anchor.bottom + 6 } : { bottom: window.innerHeight - anchor.top + 6 }),
+    },
+    autoFocus: true,
+    onFocus: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => e.currentTarget.setSelectionRange(value.length, value.length),
+    onContextMenu: (e: React.MouseEvent) => e.stopPropagation(), // the text menu (Paste…), not the card's
+    onKeyDown: (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      e.stopPropagation(); // keep global shortcuts out of the field
+      if (kind === "tag" && e.key === "Escape") e.currentTarget.value = "";
+      if (e.key === "Escape" || (kind === "tag" && e.key === "Enter")) e.currentTarget.blur();
+    },
+    onBlur: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => onDone(e.currentTarget.value),
+  };
+  return createPortal(
+    kind === "note" ? (
+      <textarea {...field} rows={4} defaultValue={value} placeholder="Your note" aria-label="Your note" />
+    ) : (
+      <input {...field} list="all-tags" placeholder="Tag name" aria-label="Tag name" />
+    ),
+    document.body,
+  );
+}
+
 // Thumbnail in the card; the player opens big in a <dialog> (Esc / backdrop closes).
 // One iframe at a time: a grid of embeds would load dozens of players.
 function YouTube({ id, title, onPlay }: { id: string; title?: string; onPlay: (id: string) => void }) {
   return (
     <button className="video poster" title="Play" aria-label={`Play video${title ? `: ${title}` : ""}`} onClick={() => onPlay(id)}>
-      <img src={`https://i.ytimg.com/vi/${id}/hqdefault.jpg`} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" />
+      <Picture src={`https://i.ytimg.com/vi/${id}/hqdefault.jpg`} alt="" />
       <span className="play">
         <Play size={16} weight="fill" />
       </span>

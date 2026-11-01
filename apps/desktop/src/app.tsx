@@ -27,6 +27,19 @@ const readSidebar = () => {
     return true;
   }
 };
+const EXTENSION = "https://chromewebstore.google.com/detail/pgdlcaikjpnmhcipgocnmilnilakafem";
+const readFlag = (key: string) => {
+  try {
+    return localStorage.getItem(key) === "1";
+  } catch {
+    return false;
+  }
+};
+const setFlag = (key: string) => {
+  try {
+    localStorage.setItem(key, "1");
+  } catch {}
+};
 
 // Search text per note. Note objects are replaced when they change, so entries can't go stale.
 const hays = new WeakMap<Note, string>();
@@ -68,6 +81,8 @@ export default function App() {
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState<string | null>(null);
   const [sidebar, setSidebar] = useState(readSidebar);
+  const [hasSaved, setHasSaved] = useState(() => readFlag("hasSaved")); // first note ever retires the install prompt
+  const [extensionSeen, setExtensionSeen] = useState(() => readFlag("extensionSeen"));
   const [dragging, setDragging] = useState(false);
   const [dropping, setDropping] = useState(false); // external link/image dragged over the window
   const [picks, setPicks] = useState<string[] | null>(null); // Rediscover: ids of random old saves
@@ -87,6 +102,10 @@ export default function App() {
     const load = () =>
       invoke<Note[]>("list_notes").then((ns) => {
         seen.current ??= new Set(ns.map((n) => n.id));
+        if (ns.length) {
+          setHasSaved(true);
+          setFlag("hasSaved");
+        }
         // keep unchanged objects so memo(Card) skips them
         setNotes((old) => {
           const prev = new Map(old.map((n) => [n.id, n]));
@@ -100,6 +119,11 @@ export default function App() {
     invoke<string[]>("list_folders").then(setFolders);
     const offNotes = listen("notes-changed", load);
     const offToast = listen<string>("toast", ({ payload }) => finishImport(payload));
+    // ponytail: the extension pings every minute, so an event missed during startup just arrives on the next one
+    const offExtension = listen("extension-seen", () => {
+      setExtensionSeen(true);
+      setFlag("extensionSeen");
+    });
     const run = (payload: string) => {
       if (payload === "search") {
         setView((v) => (v === "settings" ? "all" : v)); // search lives in the grid header
@@ -157,6 +181,7 @@ export default function App() {
       offNotes.then((f) => f());
       offMenu.then((f) => f());
       offToast.then((f) => f());
+      offExtension.then((f) => f());
       window.removeEventListener("keydown", key);
     };
   }, []);
@@ -278,7 +303,7 @@ export default function App() {
       .sort((a, b) => b.savedAt - a.savedAt);
   }, [notes, deferredQ, view, picks]);
 
-  // Tags are the keywords given to watched elements plus import collections.
+  // Tags are the ones added on cards, keywords given to watched elements, and import collections.
   const tags = useMemo(() => {
     const counts = new Map<string, number>();
     for (const n of notes) for (const t of n.tags ?? []) counts.set(t, (counts.get(t) ?? 0) + 1);
@@ -353,6 +378,11 @@ export default function App() {
   const setMine = useCallback((id: string, mine: string) => {
     setNotes((ns) => ns.map((n) => (n.id === id ? { ...n, mine: mine || undefined } : n)));
     invoke("update_note", { id, patch: { mine: mine || null } });
+  }, []);
+
+  const setTags = useCallback((id: string, tags: string[]) => {
+    setNotes((ns) => ns.map((n) => (n.id === id ? { ...n, tags: tags.length ? tags : undefined } : n)));
+    invoke("update_note", { id, patch: { tags: tags.length ? tags : null } });
   }, []);
 
   const openTag = useCallback((t: string) => setView(`tag:${t}`), []);
@@ -475,6 +505,17 @@ export default function App() {
         <div className="scroll">
         {view === "settings" ? (
           <Settings />
+        ) : !hasSaved ? (
+          <div className="empty">
+            {extensionSeen ? (
+              <p>Extension connected. Like, save, or watch something. It shows up here.</p>
+            ) : (
+              <>
+                <p>Install the Chrome extension, then like, save, or watch something. It shows up here.</p>
+                <button onClick={() => openUrl(EXTENSION)}>Get the extension</button>
+              </>
+            )}
+          </div>
         ) : shown.length === 0 ? (
           <p className="empty">
             {notes.length
@@ -501,6 +542,7 @@ export default function App() {
                 onMove={move}
                 onMine={setMine}
                 onTag={openTag}
+                onTags={setTags}
                 onDrag={setDragging}
               />
             ))}
@@ -510,6 +552,12 @@ export default function App() {
       </div>
       <Player id={playing} onClose={() => setPlaying(null)} />
       <div id="drag-ghost" className="ghost" aria-hidden="true" />
+      {/* one shared list, so a new tag doesn't re-render every memoized card */}
+      <datalist id="all-tags">
+        {tags.map(([t]) => (
+          <option key={t} value={t} />
+        ))}
+      </datalist>
       {dropping && <div className="drop-overlay">Drop to save</div>}
       {busy && (
         <div className="busy" role="status">

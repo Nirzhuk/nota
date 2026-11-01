@@ -10,6 +10,7 @@
     "core:window:allow-toggle-maximize",
     "core:window:allow-close",
     "opener:default",
+    "autostart:default",
     "global-shortcut:default",
     "clipboard-manager:allow-read-text",
     "updater:default",

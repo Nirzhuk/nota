@@ -115,6 +115,9 @@ Your notes are one JSON file:
 `~/Library/Application Support/app.nota.desktop/notes.json` on macOS,
 `%APPDATA%\app.nota.desktop\notes.json` on Windows.
 
+Images from new saves are also copied to an `images` folder next to it, so they
+survive if the post is deleted. Turn this off or clear the copies in Settings.
+
 ## Development
 
 ```

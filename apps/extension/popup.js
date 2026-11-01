@@ -19,9 +19,12 @@ const hostOf = (site) => {
 async function status() {
   const { queue = {} } = await chrome.storage.local.get("queue");
   const pending = Object.keys(queue).length;
-  const online = await fetch("http://127.0.0.1:4317/ping").then((r) => r.ok, () => false);
+  const online = await fetch("http://127.0.0.1:4317/ping", { headers: { "X-Nota": "1" } }).then((r) => r.ok, () => false);
+  if (online) await chrome.storage.local.set({ appSeen: true });
+  const { appSeen } = await chrome.storage.local.get("appSeen");
   $("status").className = `status ${online ? "on" : ""}`;
-  $("status").lastChild.textContent = online ? "Connected" : "Nota closed";
+  $("status").lastChild.textContent = online ? "Connected" : appSeen ? "Nota closed" : "Not connected";
+  $("get-app").hidden = online || !!appSeen;
   $("foot").hidden = !pending;
   $("pending").textContent = `${pending} waiting to sync`;
   return queue;

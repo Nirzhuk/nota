@@ -10,7 +10,7 @@ import { withMod } from "./platform";
 type Props = {
   notes: Note[];
   folders: string[];
-  tags: [string, number][]; // [tag, count]: watched-element keywords + import collections
+  tags: [string, number][]; // [tag, count]: added on cards, watched-element keywords, import collections
   view: View;
   dragging: boolean; // a card is being dragged
   setView: (v: View) => void;
@@ -164,7 +164,7 @@ export function Sidebar({ notes, folders, tags, view, dragging, setView, onAdd, 
           title={`Settings  ${withMod(",")}`}
           aria-label="Settings"
           aria-current={view === "settings" ? "page" : undefined}
-          onClick={() => setView("settings")}
+          onClick={() => setView(view === "settings" ? "all" : "settings")}
         >
           <GearSix size={15} />
         </button>

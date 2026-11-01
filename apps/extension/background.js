@@ -1,6 +1,17 @@
 // Notes queue in chrome.storage until the Nota app accepts them,
 // so nothing is lost while the app is closed.
 const API = "http://127.0.0.1:4317/notes";
+const APP_PAGE = "https://github.com/Nirzhuk/nota/releases/latest";
+
+// Tells the app the extension is installed, and remembers that the app exists.
+const ping = () =>
+  fetch("http://127.0.0.1:4317/ping", { headers: { "X-Nota": "1" } }).then(
+    async (res) => {
+      if (res.ok) await chrome.storage.local.set({ appSeen: true });
+      return res.ok;
+    },
+    () => false,
+  );
 
 let lock = Promise.resolve();
 const serial = (fn) => (lock = lock.then(fn, fn));
@@ -629,7 +640,14 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
 chrome.action.setBadgeBackgroundColor({ color: "#ff9f0a" });
 chrome.alarms.create("flush", { periodInMinutes: 1 });
 chrome.alarms.onAlarm.addListener(flush);
+chrome.alarms.onAlarm.addListener(() => ping());
 chrome.runtime.onStartup.addListener(flush);
+chrome.runtime.onStartup.addListener(() => ping());
+// A running app updates its prompt right away. No app yet: send them to the download.
+chrome.runtime.onInstalled.addListener(async ({ reason }) => {
+  const online = await ping();
+  if (reason === "install" && !online) chrome.tabs.create({ url: APP_PAGE });
+});
 chrome.runtime.onStartup.addListener(() => syncTriggerScripts().catch(() => {}));
 
 // Chrome never updates content scripts in already-open tabs, so after an

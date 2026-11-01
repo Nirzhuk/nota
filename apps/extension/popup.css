@@ -179,3 +179,7 @@ footer button {
   @keyframes fade { from { opacity: 0; } }
   .spin svg { animation: none; }
 }
+
+.get-app { display: block; padding: 8px 10px; border-bottom: 1px solid var(--line); color: var(--dim); text-decoration: none; }
+.get-app[hidden] { display: none; }
+.get-app b { color: var(--fg); }
