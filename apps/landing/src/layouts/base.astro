@@ -37,6 +37,30 @@ const og = new URL("/og.png", Astro.site).href;
         else if (/Macintosh/.test(ua) && navigator.maxTouchPoints < 2) c.add("os-mac");
       })();
     </script>
+    {import.meta.env.PROD && (
+      <>
+        <script is:inline>
+          // Cookieless visits; the queue lets the tracker load async.
+          window.op = window.op || function () {
+            var q = [];
+            return new Proxy(
+              function () { arguments.length && q.push([].slice.call(arguments)); },
+              {
+                get: function (_, key) { return key === "q" ? q : function () { q.push([key].concat([].slice.call(arguments))); }; },
+                has: function (_, key) { return key === "q"; },
+              }
+            );
+          }();
+          window.op("init", {
+            clientId: "c74744a7-8181-4a7c-8e4e-01524fe804dd",
+            trackScreenViews: true,
+            trackOutgoingLinks: true,
+            trackAttributes: true,
+          });
+        </script>
+        <script is:inline async src="https://openpanel.dev/op1.js"></script>
+      </>
+    )}
   </head>
   <body>
     <a class="skip button-sm" href="#main">Skip to content</a>

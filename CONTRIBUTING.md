@@ -58,7 +58,8 @@ on the real site.
 ## Privacy rules
 
 Nota never sends saved data anywhere except the app on the user's own computer.
-PRs that add analytics, remote servers or third-party calls won't be merged.
+PRs that add analytics, remote servers or third-party calls to the app or
+extension won't be merged. The landing site uses cookieless OpenPanel analytics.
 
 ## License
 

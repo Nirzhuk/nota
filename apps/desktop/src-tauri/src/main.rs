@@ -5,6 +5,7 @@
 #[cfg(target_os = "macos")]
 mod hover;
 mod images;
+mod mcp;
 
 use serde_json::Value;
 use std::{collections::{HashMap, HashSet}, fs, io::Read, path::PathBuf, process::Stdio, sync::Mutex};
@@ -591,6 +592,10 @@ fn save_link(app: &AppHandle, url: &str, title: &str, tags: &[&str]) -> bool {
 }
 
 fn main() {
+    let args: Vec<String> = std::env::args().collect();
+    if args.get(1).is_some_and(|a| a == "--mcp") {
+        return mcp::run(args.get(2).map(String::as_str));
+    }
     // Release builds on Windows have no console, so a crash would otherwise leave no trace.
     std::panic::set_hook(Box::new(|info| {
         eprintln!("{info}");
@@ -639,7 +644,10 @@ fn main() {
             set_settings,
             reveal_notes,
             images::images_size,
-            images::clear_images
+            images::clear_images,
+            mcp::assistants,
+            mcp::connect_assistant,
+            mcp::disconnect_assistant
         ])
         .run(tauri::generate_context!())
         .expect("error while running nota");

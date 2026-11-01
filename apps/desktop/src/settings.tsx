@@ -158,6 +158,8 @@ export function Settings() {
         </Row>
       </div>
 
+      <Assistants />
+
       <h3>Keyboard shortcuts</h3>
       <dl className="rows keys">
         {SHORTCUTS.map(({ what, combos, sep }) => (
@@ -179,6 +181,124 @@ export function Settings() {
         ))}
       </dl>
     </section>
+  );
+}
+
+type AssistantStatus = { found: boolean; connected: boolean; started: boolean; lastUsed: number | null };
+const ASSISTANTS = [
+  { id: "hermes", name: "Hermes" },
+  { id: "claude-code", name: "Claude Code" },
+  { id: "claude-desktop", name: "Claude Desktop" },
+];
+
+const lastUsed = (t: number) => {
+  const minutes = Math.floor((Date.now() - t) / 60000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} ${days === 1 ? "day" : "days"} ago`;
+};
+
+const statusText = (s: AssistantStatus | undefined) => {
+  const computer = MAC ? "Mac" : "PC";
+  if (!s) return "Checking…";
+  if (!s.connected) return s.found ? `Found on this ${computer}.` : `Not found on this ${computer}.`;
+  if (s.lastUsed) return `Connected. Last used ${lastUsed(s.lastUsed)}.`;
+  return s.started ? "Connected." : "Connected. Restart it to start using Nota.";
+};
+
+// Detection and config edits live in mcp.rs. Rechecks on focus: an assistant restarted elsewhere changes its status.
+function Assistants() {
+  const [data, setData] = useState<{ command: string; assistants: Record<string, AssistantStatus> }>();
+  const [busy, setBusy] = useState<string>();
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showSetup, setShowSetup] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const refresh = () => invoke<NonNullable<typeof data>>("assistants").then(setData);
+  useEffect(() => {
+    refresh();
+    window.addEventListener("focus", refresh);
+    return () => window.removeEventListener("focus", refresh);
+  }, []);
+
+  const change = async (id: string, connected: boolean) => {
+    setBusy(id);
+    setErrors((e) => ({ ...e, [id]: "" }));
+    try {
+      await invoke(connected ? "disconnect_assistant" : "connect_assistant", { id });
+    } catch (e) {
+      setErrors((old) => ({ ...old, [id]: String(e) }));
+    }
+    await refresh();
+    setBusy(undefined);
+  };
+
+  const snippet = `{
+  "mcpServers": {
+    "nota": {
+      "command": ${JSON.stringify(data?.command ?? "")},
+      "args": ["--mcp"]
+    }
+  }
+}`;
+  const copy = async () => {
+    await navigator.clipboard.writeText(snippet);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1200);
+  };
+
+  return (
+    <>
+      <h3>AI assistants</h3>
+      <div className="rows">
+        {ASSISTANTS.map(({ id, name }) => {
+          const s = data?.assistants[id];
+          const dot = s?.connected ? "dot on" : s?.found ? "dot found" : "dot";
+          const canAct = s?.connected || s?.found;
+          const action = s?.connected ? "Disconnect" : "Connect";
+          return (
+            <div key={id} className={`row assistant${s && !canAct ? " missing" : ""}`}>
+              <span aria-hidden="true" className={dot} />
+              <span className="what">
+                {name}
+                <small>{errors[id] || statusText(s)}</small>
+              </span>
+              {canAct && (
+                <button
+                  className="btn"
+                  aria-label={`${action} ${name}`}
+                  disabled={!!busy}
+                  onClick={() => change(id, !!s?.connected)}
+                >
+                  {busy !== id ? action : s?.connected ? "Disconnecting…" : "Connecting…"}
+                </button>
+              )}
+            </div>
+          );
+        })}
+        <div className="row assistant">
+          <span aria-hidden="true" className="dot blank" />
+          <span className="what">
+            Other assistant
+            <small>Set up any assistant that supports MCP by hand.</small>
+          </span>
+          <button className="btn" aria-expanded={showSetup} onClick={() => setShowSetup(!showSetup)}>
+            {showSetup ? "Hide setup" : "Show setup"}
+          </button>
+        </div>
+        {showSetup && (
+          <div className="setup">
+            <pre>{snippet}</pre>
+            <button className="btn" onClick={copy}>
+              {copied ? "Copied" : "Copy"}
+            </button>
+          </div>
+        )}
+      </div>
+      <p className="caption">Connected assistants can search and read your saves, but can't change them. What they read goes to their provider.</p>
+    </>
   );
 }
 

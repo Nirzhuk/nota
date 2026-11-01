@@ -464,6 +464,23 @@ article:hover .remove, article:hover .tools, article:focus-within .remove, artic
 .btn:active { filter: brightness(0.92); } /* native buttons darken on press, they don't move */
 .btn:disabled { opacity: 0.5; }
 
+/* AI assistants: status dot ahead of the name, setup snippet under the rows */
+.assistant { gap: 10px; }
+.assistant.missing .what { color: var(--dim); }
+.dot { flex: none; width: 8px; height: 8px; box-sizing: border-box; border: 1px solid var(--field-line); border-radius: 50%; }
+.dot.found { border-color: var(--dim); }
+.dot.on { border: 0; background: #30d158; }
+.dot.blank { border: 0; }
+.setup { display: flex; align-items: flex-start; gap: 8px; padding: 0 12px 12px 30px; }
+.setup .btn { flex: none; }
+.setup pre {
+  flex: 1; min-width: 0; margin: 0; padding: 10px 12px; border-radius: 8px;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+  background: #111112; color: #f2f2f7; font: 11px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
+  -webkit-user-select: text; user-select: text;
+}
+.settings .caption { margin: 6px 4px 0; color: var(--dim); font-size: 11px; }
+
 /* custom select: bold text + caret, popover list with a check on the chosen one */
 .select { position: relative; flex: none; }
 .trigger {

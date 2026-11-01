@@ -118,6 +118,17 @@ Your notes are one JSON file:
 Images from new saves are also copied to an `images` folder next to it, so they
 survive if the post is deleted. Turn this off or clear the copies in Settings.
 
+## Ask your AI assistant
+
+Connect Hermes, Claude Code or Claude Desktop in Settings, under **AI assistants**,
+then ask it things like "what did I save about Rust?". Other assistants that
+support MCP can use the setup shown under **Other assistant**.
+
+Assistants can search and read your saves, but can't change them, and Nota
+doesn't need to be open. Nota only talks to them on your computer, but what an
+assistant reads goes to its AI provider. Saved posts are written by other people,
+so an assistant could be misled by text inside one.
+
 ## Development
 
 ```
