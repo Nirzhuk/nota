@@ -93,3 +93,16 @@ One-time setup on GitHub:
 - Settings → Actions → General → Workflow permissions → Read and write.
 
 Local signed build: `cd apps/desktop && bun run release`.
+
+## Extension release
+
+Bump `version` in `apps/extension/manifest.json`, push to `main`. CI
+(`.github/workflows/extension.yml`) uploads to the Chrome Web Store, submits
+for review, and tags `ext-v<version>`.
+
+One-time setup (the first version is submitted by hand in the dashboard):
+1. `npx chrome-webstore-upload-keys` and follow its steps (Google Cloud project,
+   Chrome Web Store API, OAuth client). It prints client ID, secret and refresh token.
+2. GitHub repo secrets: `EXTENSION_ID` (32-letter item ID from the dashboard),
+   `PUBLISHER_ID` (from the dashboard URL), `CWS_CLIENT_ID`, `CWS_CLIENT_SECRET`,
+   `CWS_REFRESH_TOKEN`.
