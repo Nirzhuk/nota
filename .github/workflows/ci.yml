@@ -1,0 +1,23 @@
+# Typecheck and test on every pull request.
+
+name: ci
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+      - run: bun install --frozen-lockfile
+      - run: bun run web:build # typechecks, and cargo needs dist/
+        working-directory: apps/desktop
+      - run: cargo test
+        working-directory: apps/desktop/src-tauri

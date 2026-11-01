@@ -1,0 +1,31 @@
+name: Bug report
+description: Something doesn't save, sync or show up right
+labels: [bug]
+body:
+  - type: input
+    id: site
+    attributes:
+      label: Site
+      description: Where it happened, e.g. x.com, YouTube, the Nota app itself
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you clicked, what you expected, and what Nota did instead
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Nota app version (bottom of the sidebar), extension version, OS
+      placeholder: app v0.1.0, extension 0.1.0, macOS 15.2
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots or console errors
+      description: Optional. For extension errors, right-click the popup → Inspect → Console.

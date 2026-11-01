@@ -138,3 +138,13 @@ Both need repo secrets. The desktop app needs `TAURI_SIGNING_PRIVATE_KEY` and
 extension needs `EXTENSION_ID`, `PUBLISHER_ID`, `CWS_CLIENT_ID`,
 `CWS_CLIENT_SECRET` and `CWS_REFRESH_TOKEN`. Run
 `npx chrome-webstore-upload-keys` to get the last three.
+
+## Contributing
+
+Bug reports and PRs are welcome. When a site changes its buttons and saves
+stop working, a selector fix in `apps/extension/content-<site>.js` is the most
+useful PR you can send. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## License
+
+[MIT](LICENSE)

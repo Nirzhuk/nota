@@ -1,0 +1,16 @@
+name: Feature or new site
+description: Suggest something Nota should do or a site it should support
+labels: [enhancement]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What do you want?
+      description: For a new site, say which button should trigger a save.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why?
+      description: What are you trying to do today, and what gets in the way?
