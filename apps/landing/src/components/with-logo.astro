@@ -1,0 +1,7 @@
+---
+// For copy kept in data files: puts the logo in front of every "Nota" in the text.
+import Nota from "./nota.astro";
+interface Props { text: string }
+const parts = Astro.props.text.split(/\bNota\b/);
+---
+{parts.map((part, i) => <>{i > 0 && <Nota />}{part}</>)}

@@ -1,0 +1,36 @@
+---
+import WithLogo from "./with-logo.astro";
+import { EXTENSION, release } from "../release";
+const steps = [
+  ["Download the app", "It runs on your Mac or Windows computer and opens without an account.", release.all],
+  ["Add the extension to Chrome", "This is the part that notices your clicks and sends them to the app.", EXTENSION],
+  ["Go back to browsing", "Like, star and upvote the way you always do. Nota picks it up from there."],
+];
+---
+<section class="steps band">
+  <div class="wrap">
+    <div class="head reveal">
+      <h2 class="heading-2">You need two things.<br />The app and the extension.</h2>
+      <p class="body-3">Both are free, and you set them up once. The extension notices what you click, and the app keeps it. You need both to save as you browse.</p>
+    </div>
+    <ol class="list">
+      {steps.map(([t, d, href], i) => (
+        <li class="reveal" style={`--i:${i * 2}`}>
+          <span class="num heading-3">{i + 1}</span>
+          <span class="rule"></span>
+          <h3 class="heading-5">{href ? <a class="textlink" href={href}>{t}</a> : t}</h3>
+          <p class="body-3 dim"><WithLogo text={d} /></p>
+        </li>
+      ))}
+    </ol>
+  </div>
+</section>
+<style>
+  .list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-300); }
+  li { display: flex; flex-direction: column; gap: var(--s-100); }
+  .num { color: var(--dim); font-variant-numeric: tabular-nums; }
+  .rule { height: 2px; margin-block: var(--s-50); background: var(--line-strong); transform-origin: left; }
+  :global(.js) li.reveal:not(.in) .rule { transform: scaleX(0); }
+  :global(.js) li.in .rule { transition: transform 1000ms var(--ease) calc(var(--i) * 80ms); }
+  @media (max-width: 860px) { .list { grid-template-columns: minmax(0, 1fr); } }
+</style>

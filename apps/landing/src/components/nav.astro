@@ -1,0 +1,126 @@
+---
+import { release, REPO } from "../release";
+const links = [
+  { href: "/#story", label: "How it works" },
+  { href: "/#find", label: "Search" },
+  { href: "/#free", label: "Free" },
+  { href: "/#faq", label: "FAQ" },
+];
+---
+<header class="nav" data-nav>
+  <nav class="bar" aria-label="Main">
+    <a class="brand title-4" href="/"><img src="/img/logo.png" width="24" height="24" alt="" />Nota</a>
+    <ul class="links">
+      {links.map((l) => <li><a class="title-4" href={l.href} data-navlink>{l.label}</a></li>)}
+      <li><a class="title-4" href={REPO}>GitHub</a></li>
+    </ul>
+    <a class="btn button-sm cta only-mac" href={release.mac}>Download</a>
+    <a class="btn button-sm cta only-win" href={release.win}>Download</a>
+    <a class="btn button-sm cta only-other" href={release.all}>Download</a>
+    <button class="toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="menu" data-toggle><span></span><span></span></button>
+  </nav>
+</header>
+<div class="panel" id="menu" data-panel hidden>
+  <ul>
+    {links.map((l, i) => <li style={`--n:${i}`}><a class="heading-4" href={l.href}>{l.label}</a></li>)}
+    <li style={`--n:${links.length}`}><a class="heading-4" href={REPO}>GitHub</a></li>
+  </ul>
+</div>
+<style>
+  .nav { position: fixed; top: var(--s-200); left: 0; right: 0; z-index: 50; display: flex; justify-content: center; padding-inline: var(--s-200); pointer-events: none; }
+  .bar {
+    pointer-events: auto;
+    display: flex; align-items: center; gap: var(--s-200);
+    padding: var(--s-75);
+    background: rgba(28, 28, 30, 0.72);
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    backdrop-filter: blur(16px) saturate(1.4);
+    border: 1px solid var(--line);
+    border-radius: var(--r-2xl);
+    box-shadow: var(--lift);
+  }
+  .brand { display: flex; align-items: center; gap: var(--s-75); padding-inline: var(--s-50); text-decoration: none; }
+  .links { display: flex; align-items: center; gap: var(--s-50); }
+  .links a {
+    display: block; padding: var(--s-50) var(--s-75);
+    color: var(--dim); text-decoration: none; border-radius: var(--r-md);
+    transition: color var(--fade) var(--ease), background-color var(--fade) var(--ease);
+  }
+  .links a:hover { color: var(--fg); }
+  .links a[aria-current="true"] { color: var(--fg); background: var(--chip); }
+  .toggle { display: none; position: relative; width: var(--s-500); height: var(--s-500); border-radius: var(--r-lg); }
+  .toggle span {
+    position: absolute; left: var(--s-100); right: var(--s-100); top: 50%; height: 2px; margin-top: -1px;
+    background: var(--fg); border-radius: var(--r-full);
+    transition: transform var(--move) var(--ease);
+  }
+  .toggle span:first-child { transform: translateY(-4px); }
+  .toggle span:last-child { transform: translateY(4px); }
+  .toggle[aria-expanded="true"] span:first-child { transform: rotate(45deg); }
+  .toggle[aria-expanded="true"] span:last-child { transform: rotate(-45deg); }
+
+  .panel {
+    position: fixed; inset: 0; z-index: 40;
+    display: flex; align-items: center;
+    padding: var(--s-300);
+    background: rgba(18, 18, 20, 0.92);
+    -webkit-backdrop-filter: blur(24px);
+    backdrop-filter: blur(24px);
+    opacity: 0;
+    transition: opacity var(--fade) var(--ease);
+  }
+  .panel.open { opacity: 1; }
+  .panel ul { display: flex; flex-direction: column; gap: var(--s-200); }
+  .panel a { text-decoration: none; }
+  .panel li { opacity: 0; transform: translateY(var(--s-300)); }
+  .panel.open li {
+    opacity: 1; transform: none;
+    transition: opacity var(--move) var(--ease) calc(var(--n) * 60ms), transform var(--move) var(--ease) calc(var(--n) * 60ms);
+  }
+
+  @media (max-width: 760px) {
+    .links { display: none; }
+    .toggle { display: block; }
+    .bar { gap: var(--s-75); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .panel li { transform: none; }
+    .panel.open li { transition: opacity var(--fade) var(--ease); }
+    .toggle span { transition: none; }
+  }
+</style>
+<script>
+  const toggle = document.querySelector<HTMLButtonElement>("[data-toggle]")!;
+  const panel = document.querySelector<HTMLElement>("[data-panel]")!;
+
+  const setOpen = (open: boolean) => {
+    toggle.setAttribute("aria-expanded", String(open));
+    toggle.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+    document.documentElement.style.overflow = open ? "hidden" : "";
+    if (open) {
+      panel.hidden = false;
+      requestAnimationFrame(() => requestAnimationFrame(() => panel.classList.add("open")));
+    } else {
+      panel.classList.remove("open");
+      setTimeout(() => { if (toggle.getAttribute("aria-expanded") === "false") panel.hidden = true; }, 300);
+    }
+  };
+  toggle.addEventListener("click", () => setOpen(toggle.getAttribute("aria-expanded") !== "true"));
+  panel.addEventListener("click", (e) => { if ((e.target as Element).closest("a")) setOpen(false); });
+  addEventListener("keydown", (e) => { if (e.key === "Escape" && !panel.hidden) { setOpen(false); toggle.focus(); } });
+
+  // Current section in the nav.
+  const links = [...document.querySelectorAll<HTMLAnchorElement>("[data-navlink]")];
+  const io = new IntersectionObserver(
+    (entries) => {
+      for (const e of entries) {
+        for (const a of links) if (a.hash === `#${e.target.id}`) a.setAttribute("aria-current", String(e.isIntersecting));
+      }
+    },
+    { rootMargin: "-45% 0px -50% 0px" },
+  );
+  for (const a of links) {
+    const section = a.hash && document.querySelector(a.hash);
+    if (section) io.observe(section);
+  }
+</script>

@@ -1,0 +1,46 @@
+---
+import Base from "../layouts/base.astro";
+import Hero from "../components/hero.astro";
+import Sites from "../components/sites.astro";
+import Story from "../components/story.astro";
+import Wall from "../components/wall.astro";
+import Tagline from "../components/tagline.astro";
+import Useful from "../components/useful.astro";
+import Free from "../components/free.astro";
+import Steps from "../components/steps.astro";
+import Faq from "../components/faq.astro";
+import Cta from "../components/cta.astro";
+import { FAQ } from "../faq";
+
+const description =
+  "Nota saves what you like on X, Reddit, YouTube, GitHub, Hacker News, Bluesky and Instagram into one searchable app on your computer. You need the free app and Chrome extension. No account.";
+const schema = [
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "Nota",
+    description,
+    applicationCategory: "UtilitiesApplication",
+    operatingSystem: "macOS, Windows",
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+    license: "https://opensource.org/license/mit",
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: FAQ.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
+  },
+];
+---
+<Base title="Nota: every like, star and upvote in one free app" description={description} schema={schema}>
+  <Hero />
+  <Sites />
+  <Story />
+  <Wall />
+  <Tagline />
+  <Useful />
+  <Free />
+  <Steps />
+  <Faq />
+  <Cta />
+</Base>

@@ -1,0 +1,176 @@
+---
+import Icon from "./icon.astro";
+import Nota from "./nota.astro";
+import NoteCard from "./note.astro";
+import { POSTS } from "../notes";
+const breadit = { ...POSTS.find((p) => p.source === "reddit")!, when: "3w" };
+const imports = ["#reddit-upvoted", "#reddit-saved", "#x-bookmarks", "#x-likes", "#x-archive"];
+---
+<section class="useful band">
+  <div class="wrap">
+    <div class="head reveal">
+      <h2 class="heading-2">Small things that make it useful</h2>
+      <p class="body-3">It's a plain tool that keeps what you click and gets out of your way.</p>
+    </div>
+    <div class="bento">
+      <article class="tile span2 reveal">
+        <div class="art watch" aria-hidden="true">
+          <div class="page">
+            <span class="fake long"></span><span class="fake"></span>
+            <div class="btns"><span class="fb">Share</span><span class="fb target">Read later</span><span class="fb">More</span></div>
+            <span class="pick"></span>
+          </div>
+          <span class="tag title-5">#read later</span>
+        </div>
+        <h3 class="heading-6">Teach it any button</h3>
+        <p class="body-6 dim">Pick a button on any site and name it. From then on, clicking it saves the page with that name as a tag.</p>
+      </article>
+
+      <article class="tile reveal" style="--i:1">
+        <div class="art queue" aria-hidden="true">
+          <div class="ext"><img src="/img/extension.png" width="64" height="64" alt="" /><span class="count caption-4"><i>1</i><i>2</i><i>3</i></span></div>
+          <div class="state caption-4"><span class="closed">App closed, holding 3</span><span class="open">App open, all sent</span></div>
+        </div>
+        <h3 class="heading-6">Nothing gets lost</h3>
+        <p class="body-6 dim">App closed? The extension holds your saves and sends them when <Nota /> opens.</p>
+      </article>
+
+      <article class="tile reveal" style="--i:2">
+        <div class="art imports" aria-hidden="true">
+          {imports.map((t, i) => <span class="chip caption-4" style={`--c:${i}`}>{t}</span>)}
+        </div>
+        <h3 class="heading-6">Bring your old likes</h3>
+        <p class="body-6 dim">Import your Reddit saves, your X bookmarks and likes, or every like you ever made from your X archive.</p>
+      </article>
+
+      <article class="tile span2 reveal" style="--i:3">
+        <div class="art code" aria-hidden="true">
+          <pre><code><span class="dim">// notes.json</span>
+<span class="l" style="--l:0">{"{"}</span>
+<span class="l" style="--l:1">  "source": "github",</span>
+<span class="l" style="--l:2">  "url": "https://github.com/tauri-apps/tauri",</span>
+<span class="l" style="--l:3">  "tags": ["read later"]</span>
+<span class="l" style="--l:4">{"}"}</span></code></pre>
+        </div>
+        <h3 class="heading-6">Your saves are one file</h3>
+        <p class="body-6 dim">Everything lives in a single JSON file on your computer. Copy it, back it up, or read it with anything.</p>
+      </article>
+
+      <article class="tile span3 row reveal" style="--i:4">
+        <div class="copy">
+          <h3 class="heading-6">Save anything else in one click</h3>
+          <p class="body-6 dim">Right click a page, link, image or selected text. <Nota /> reads the page's own preview info, so any site works without setup.</p>
+        </div>
+        <div class="art menu" aria-hidden="true">
+          <ul class="ctx body-6">
+            <li>Back</li><li>Reload</li><li class="sep"></li>
+            <li class="hl"><img src="/img/extension.png" width="16" height="16" alt="" />Save page to Nota</li>
+            <li>Inspect</li>
+          </ul>
+          <img class="pop" src="/img/popup.png" width="398" height="330" alt="" />
+        </div>
+      </article>
+
+      <article class="tile span3 row flip reveal" style="--i:5">
+        <div class="copy">
+          <h3 class="heading-6">Speak with your favorite agent about what you saved before</h3>
+          <p class="body-6 dim">Your saves are a plain JSON file on your computer, so any agent that can read files can search them with you. Point it at notes.json and ask.</p>
+        </div>
+        <div class="art chat" aria-hidden="true">
+          <div class="m bubble body-6" style="--m:0">What was that sourdough schedule I saved?</div>
+          <div class="m reading caption-5 dim" style="--m:1"><Icon name="sparkle" size={14} />Reading notes.json</div>
+          <div class="m body-6" style="--m:2">That's this one, from r/Breadit.</div>
+          <div class="m found" style="--m:3"><NoteCard note={breadit} /></div>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+<style>
+  .bento { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-100); }
+  .tile { display: flex; flex-direction: column; gap: var(--s-75); padding: var(--s-300); background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-2xl); overflow: hidden; transition: border-color var(--fade) var(--ease), transform var(--move) var(--ease); }
+  .tile:hover { border-color: var(--line-strong); }
+  .span2 { grid-column: span 2; }
+  .span3 { grid-column: span 3; }
+  .row { flex-direction: row; align-items: center; gap: var(--s-400); }
+  .copy { flex: 1; display: flex; flex-direction: column; gap: var(--s-75); max-width: 400px; }
+  .art { position: relative; height: 180px; margin-bottom: var(--s-200); }
+
+  /* Teach it any button: the picker outline hunts, locks on, the tag pops. */
+  .page { position: absolute; inset: 0 var(--s-900) 0 0; display: flex; flex-direction: column; gap: var(--s-75); padding: var(--s-200); background: var(--card); border: 1px solid var(--line); border-radius: var(--r-xl); }
+  .fake { height: var(--s-100); width: 45%; background: var(--chip); border-radius: var(--r-sm); }
+  .fake.long { width: 70%; }
+  .btns { display: flex; gap: var(--s-75); margin-top: auto; }
+  .fb { padding: var(--s-50) var(--s-100); background: var(--chip); border-radius: var(--r-md); font-size: 12px; line-height: 16px; }
+  .pick { position: absolute; left: var(--s-200); bottom: var(--s-200); width: 88px; height: 24px; border: 2px dashed var(--saved); border-radius: var(--r-md); animation: hunt 5s var(--ease) infinite; }
+  @keyframes hunt { 0%, 10% { transform: translate(0, -96px) scale(1.4, 1.6); } 40%, 90% { transform: translate(64px, 0); } 100% { transform: translate(0, -96px) scale(1.4, 1.6); } }
+  .tag { position: absolute; right: 0; bottom: var(--s-200); padding: var(--s-50) var(--s-75); background: var(--saved); color: #fff; border-radius: var(--r-md); animation: tagpop 5s var(--ease) infinite; }
+  @keyframes tagpop { 0%, 45% { opacity: 0; transform: translateX(-24px) scale(0.8); } 55%, 90% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+
+  /* Queue: the badge counts up while closed, then empties when the app opens. */
+  .queue { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s-200); }
+  .ext { position: relative; }
+  .ext .count { position: absolute; top: -6px; right: -10px; width: var(--s-300); height: var(--s-300); background: var(--saved); color: #fff; border-radius: var(--r-full); overflow: hidden; animation: badge 6s var(--ease) infinite; }
+  .count i { position: absolute; inset: 0; display: grid; place-items: center; font-style: normal; opacity: 0; }
+  .count i:nth-child(1) { animation: n1 6s var(--ease) infinite; }
+  .count i:nth-child(2) { animation: n2 6s var(--ease) infinite; }
+  .count i:nth-child(3) { animation: n3 6s var(--ease) infinite; }
+  @keyframes n1 { 0%, 18% { opacity: 1; } 19%, 100% { opacity: 0; } }
+  @keyframes n2 { 0%, 18% { opacity: 0; } 19%, 36% { opacity: 1; } 37%, 100% { opacity: 0; } }
+  @keyframes n3 { 0%, 36% { opacity: 0; } 37%, 100% { opacity: 1; } }
+  @keyframes badge { 0%, 62% { transform: scale(1); opacity: 1; } 70%, 92% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+  .state { display: grid; justify-items: center; color: var(--dim); }
+  .state span { grid-area: 1 / 1; }
+  .closed { animation: st1 6s var(--ease) infinite; }
+  .open { color: var(--saved); animation: st2 6s var(--ease) infinite; }
+  @keyframes st1 { 0%, 62% { opacity: 1; } 70%, 92% { opacity: 0; } 100% { opacity: 1; } }
+  @keyframes st2 { 0%, 62% { opacity: 0; } 70%, 92% { opacity: 1; } 100% { opacity: 0; } }
+
+  /* Imports: tags stack in like a pile being sorted. */
+  .imports { display: flex; flex-wrap: wrap; align-content: center; justify-content: center; gap: var(--s-75); }
+  .imports .chip { padding: var(--s-50) var(--s-100); background: var(--chip); border-radius: var(--r-md); }
+  :global(.js) .tile.reveal:not(.in) .chip { opacity: 0; transform: translateY(var(--s-200)); }
+  :global(.js) .tile.in .chip { transition: opacity var(--move) var(--ease) calc(300ms + var(--c) * 120ms), transform var(--move) var(--ease) calc(300ms + var(--c) * 120ms); }
+
+  /* One file: lines appear in order, like a file being written. */
+  pre { height: 100%; padding: var(--s-200); background: var(--card); border: 1px solid var(--line); border-radius: var(--r-xl); font-family: var(--mono); font-size: 14px; line-height: 20px; overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere; }
+  code { font: inherit; }
+  :global(.js) .tile.reveal:not(.in) .l { opacity: 0; }
+  :global(.js) .tile.in .l { transition: opacity var(--move) var(--ease) calc(400ms + var(--l) * 160ms); }
+
+  /* Right click: the real popup sits behind the menu it pairs with. */
+  .menu { flex: 1; height: 240px; margin: 0; }
+  .ctx { position: absolute; left: 0; top: var(--s-500); z-index: 2; width: 220px; padding: var(--s-50); background: #313131; border: 1px solid var(--line-strong); border-radius: var(--r-lg); box-shadow: var(--lift); }
+  .ctx li { display: flex; align-items: center; gap: var(--s-75); padding: var(--s-50) var(--s-75); border-radius: var(--r-sm); }
+  .ctx .sep { height: 1px; padding: 0; margin: var(--s-50) var(--s-75); background: var(--line-strong); }
+  .ctx .hl { background: var(--saved); color: #fff; }
+  .pop { position: absolute; right: 0; top: 0; width: 320px; height: auto; border-radius: var(--r-xl); box-shadow: var(--lift-far); transform: rotate(2deg); }
+
+  /* Agent chat: plays through once, in order, when the tile arrives. */
+  .flip { flex-direction: row-reverse; justify-content: space-between; }
+  .chat { flex: 1; height: auto; margin: 0; display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-100); max-width: 480px; }
+  .bubble { align-self: flex-end; padding: var(--s-75) var(--s-100); background: var(--chip); border-radius: var(--r-xl); }
+  .reading { display: flex; align-items: center; gap: var(--s-50); }
+  .found { width: 100%; }
+  .found :global(.note) { border-color: var(--saved); }
+  :global(.js) .tile.reveal:not(.in) .m { opacity: 0; transform: translateY(var(--s-75)); }
+  :global(.js) .tile.in .m { transition: opacity var(--move) var(--ease) calc(300ms + var(--m) * 450ms), transform var(--move) var(--ease) calc(300ms + var(--m) * 450ms); }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.js) .tile.reveal:not(.in) .m { transform: none; }
+    :global(.js) .tile.in .m { transition: opacity var(--fade) var(--ease); }
+  }
+
+  @media (max-width: 860px) {
+    .flip { flex-direction: column; }
+    .chat { max-width: none; flex: none; }
+    .bento { grid-template-columns: minmax(0, 1fr); }
+    .span2, .span3 { grid-column: auto; }
+    .row { flex-direction: column; align-items: stretch; }
+    .menu { flex: none; height: 300px; }
+    .pop { width: 260px; top: var(--s-700); }
+    .ctx { top: 0; }
+    .copy { max-width: none; }
+    .page { right: var(--s-500); }
+  }
+</style>

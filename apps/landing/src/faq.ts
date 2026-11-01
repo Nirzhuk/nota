@@ -1,0 +1,12 @@
+export const FAQ: { q: string; a: string }[] = [
+  { q: "Is Nota really free?", a: "Yes. The app and the extension cost nothing. There is no paid tier, no trial and no account. The code is MIT licensed, so you can read it, change it and keep using it." },
+  { q: "What do I need to run it?", a: "Two things: the Nota app on a Mac or Windows computer, and the Nota extension in Chrome. The extension notices your clicks and the app keeps them. There is no Linux or phone version right now." },
+  { q: "Where do my saves go?", a: "From the extension to the Nota app on your computer, and nowhere else. They live in one JSON file on your disk. Nota fetches images and thumbnails straight from the site they came from, and it checks GitHub for new versions." },
+  { q: "Which sites does it work with?", a: "X, Reddit, YouTube, GitHub, Hacker News, Bluesky and Instagram save automatically when you like, star, upvote or save. Any other page works by hand, with the toolbar button, the right click menu or the keyboard shortcut." },
+  { q: "Why does Windows warn me when I install it?", a: "The Windows installer isn't code signed yet, so the first install asks you to choose More info, then Run anyway. The Mac version is signed and notarized by Apple." },
+  { q: "What happens if the app is closed when I like something?", a: "The extension holds on to your saves and sends them the next time Nota opens. The toolbar badge shows how many are waiting." },
+  { q: "Can I bring in the things I already liked?", a: "Yes. Reddit gives you your last 1000 upvoted and saved posts. On X you can import your bookmarks and likes, or load your X data archive to get every like you ever made, as text and links. Importing again is safe, because duplicates merge into one card." },
+  { q: "What if a site changes its buttons?", a: "Saves from that button can stop until Nota is updated, and the app shows an Update button when a new version is out. Any button you taught Nota yourself shows never fired in the Watching list, so you can spot it." },
+  { q: "How do I back up or move my saves?", a: "Copy notes.json. On a Mac it's in ~/Library/Application Support/app.nota.desktop, and on Windows it's in %APPDATA%\\app.nota.desktop." },
+  { q: "Can I ask an AI agent about my saves?", a: "Yes. Your saves are a plain JSON file, so any agent that can read files can search them. Point it at notes.json and ask. Nota has no agent built in and sends nothing itself, so if your agent runs in the cloud, what it reads goes to that provider." },
+];

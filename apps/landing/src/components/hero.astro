@@ -1,0 +1,459 @@
+---
+import Icon from "./icon.astro";
+import NoteCard from "./note.astro";
+import Download from "./download.astro";
+import Needs from "./needs.astro";
+import Nota from "./nota.astro";
+import { POSTS, SEEDED, SITES, type Source } from "../notes";
+
+const count = (s: Source) => SEEDED.filter((n) => n.source === s).length;
+const columns = [SEEDED.filter((_, i) => i % 2 === 0), SEEDED.filter((_, i) => i % 2 === 1)];
+---
+<section class="hero" data-hero>
+  <div class="intro wrap">
+    <h1 class="heading-1 grad enter">You liked it.<br />Now you can find it.</h1>
+    <p class="sub title-2 dim enter" style="--i:1">
+      <Nota /> keeps everything you like<br />in one app you can search.
+    </p>
+    <div class="enter" style="--i:2"><Download /></div>
+    <div class="enter" style="--i:3"><Needs /></div>
+  </div>
+
+  <div class="stage">
+    <ul class="posts" data-rail aria-label="Sample posts you can like">
+      {POSTS.map((p, i) => (
+        <li class="post" data-post={p.id} style={`--i:${i}`}>
+          <div class="float">
+            <div class="meta caption-5 dim">
+              <Icon name={SITES[p.source].icon} size={14} />
+              <span>{SITES[p.source].label}</span>
+            </div>
+            <p class="title-5 who">{p.author}</p>
+            {p.title && <p class="body-5">{p.title}</p>}
+            {p.text && <p class="body-6">{p.text}</p>}
+            {p.tile === "video" && <div class="thumb"><Icon name="play" size={24} /></div>}
+            {p.tile === "image" && <div class="thumb blue"><Icon name="image" size={24} /></div>}
+            <button class="like button-sm" type="button" aria-pressed="false" data-like data-did={p.did} style={`--tint:${p.tint}`}>
+              <Icon class="off" name={p.off} size={16} />
+              <Icon class="on" name={p.on} size={16} />
+              <span data-label>{p.verb}</span>
+            </button>
+          </div>
+        </li>
+      ))}
+    </ul>
+
+    <div class="tryit caption-2 dim enter" style="--i:4">
+      <span>Try it: click any post.</span>
+      <button class="sound caption-4" type="button" aria-pressed="true" data-sound>
+        <Icon class="on" name="soundOn" size={14} /><Icon class="off" name="soundOff" size={14} />
+        <span data-sound-label>Sound on</span>
+      </button>
+    </div>
+
+    <div class="win enter" style="--i:5" data-win role="region" aria-label="Demo of the Nota app">
+      <aside class="side">
+        <div class="lights" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div class="items">
+          <button class="item on" type="button" data-filter="all" aria-current="true">
+            <Icon name="tray" size={14} /><span>All</span><b data-count="all">{SEEDED.length}</b>
+          </button>
+          {(Object.keys(SITES) as Source[]).map((s) => (
+            <button class="item" type="button" data-filter={s} hidden={count(s) === 0}>
+              <Icon name={SITES[s].icon} size={14} /><span>{SITES[s].label}</span><b data-count={s}>{count(s)}</b>
+            </button>
+          ))}
+        </div>
+      </aside>
+      <div class="panel">
+        <header class="top">
+          <span class="dim"><Icon name="sidebar" size={14} /></span>
+          <label class="search dim">
+            <Icon name="search" size={14} />
+            <span class="sr-only">Search the demo</span>
+            <input type="search" placeholder="Search" autocomplete="off" data-search />
+          </label>
+          <span class="total dim" data-count="total">{SEEDED.length}</span>
+        </header>
+        <div class="grid" data-grid>
+          {columns.map((col) => <div class="col" data-col>{col.map((n) => <NoteCard note={n} />)}</div>)}
+        </div>
+        <p class="none caption-2 dim" data-none hidden>Nothing matches. Every word has to match, so try fewer words.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast live caption-4" role="status" data-toast><Icon name="checkCircle" size={16} /><span>Saved to Nota</span></div>
+
+  <span class="ghost" data-ghost aria-hidden="true"><Icon name="cursor" size={24} /></span>
+
+  {POSTS.map((p) => <template data-tpl={p.id}><NoteCard note={p} /></template>)}
+</section>
+
+<style>
+  .hero { position: relative; padding-top: 128px; padding-bottom: var(--s-800); }
+  .intro { display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--s-300); }
+  .grad {
+    max-width: 680px; padding-bottom: var(--s-50);
+    background: linear-gradient(to right, #fff, #9b9b9b);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent;
+  }
+  .sub { max-width: 680px; }
+
+  .enter { animation: rise 900ms var(--ease) both; animation-delay: calc(var(--i, 0) * 90ms); }
+  @keyframes rise { from { opacity: 0; transform: translateY(var(--s-400)); } }
+
+  .stage { position: static; }
+
+  /* Posts float around the headline and the window on wide screens. */
+  .posts { --px: 0; --py: 0; --sy: 0; }
+  .post { position: absolute; z-index: 3; width: 232px; left: calc(50% + var(--x)); top: var(--y); rotate: var(--r); translate: calc(var(--px) * var(--d) * 1px) calc((var(--py) * var(--d) - var(--sy) * var(--d) * 60) * 1px); animation: drop 1100ms var(--ease) both; animation-delay: calc(300ms + var(--i) * 70ms); }
+  .post:nth-child(1) { --x: -612px; --y: 112px; --r: -4deg; --d: 10; }
+  .post:nth-child(2) { --x: -590px; --y: 332px; --r: 3deg; --d: 16; }
+  .post:nth-child(3) { --x: -624px; --y: 560px; --r: -2deg; --d: 7; }
+  .post:nth-child(4) { --x: 372px; --y: 104px; --r: 3deg; --d: 13; }
+  .post:nth-child(5) { --x: 392px; --y: 376px; --r: -3deg; --d: 8; }
+  .post:nth-child(6) { --x: 366px; --y: 548px; --r: 2deg; --d: 15; }
+  .post:nth-child(7) { --x: 396px; --y: 754px; --r: -2deg; --d: 11; }
+  @keyframes drop { from { opacity: 0; scale: 0.8; transform: translateY(var(--s-800)); } }
+
+  .float {
+    display: flex; flex-direction: column; gap: var(--s-50);
+    padding: var(--s-100);
+    background: var(--card);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-xl);
+    box-shadow: var(--lift);
+    animation: bob 6s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+    animation-delay: calc(var(--i) * -900ms);
+  }
+  @keyframes bob { to { transform: translateY(-8px); } }
+  .meta { display: flex; align-items: center; gap: var(--s-50); }
+  .who { margin-bottom: var(--s-25); }
+  .thumb { display: grid; place-items: center; aspect-ratio: 16 / 9; margin-top: var(--s-50); background: #313131; border-radius: var(--r-md); }
+  .thumb.blue { background: #272727; color: var(--saved); }
+
+  .like {
+    align-self: flex-start;
+    display: inline-flex; align-items: center; gap: var(--s-50);
+    margin-top: var(--s-75);
+    padding: var(--s-50) var(--s-75);
+    background: var(--chip);
+    border-radius: var(--r-md);
+    transition: background-color var(--fade) var(--ease), color var(--fade) var(--ease), transform var(--fade) var(--ease);
+  }
+  .like:hover { background: var(--line-strong); transform: translateY(-1px); }
+  .like:active { transform: scale(0.96); }
+  .like :global(.on) { display: none; }
+  .like[aria-pressed="true"] :global(.on) { display: inline-flex; color: var(--tint); }
+  .like[aria-pressed="true"] :global(.off) { display: none; }
+  .like.pop :global(.on) { animation: pop 500ms var(--ease); }
+  @keyframes pop { 0% { transform: scale(0.4); } 50% { transform: scale(1.5); } 100% { transform: scale(1); } }
+
+  .tryit { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--s-100); margin: var(--s-600) var(--gutter) var(--s-200); text-align: center; }
+  .sound {
+    display: inline-flex; align-items: center; gap: var(--s-50);
+    padding: var(--s-25) var(--s-75);
+    color: var(--dim); background: var(--chip); border-radius: var(--r-full);
+    transition: color var(--fade) var(--ease);
+  }
+  .sound:hover { color: var(--fg); }
+  .sound :global(.off) { display: none; }
+  .sound[aria-pressed="false"] :global(.on) { display: none; }
+  .sound[aria-pressed="false"] :global(.off) { display: inline-flex; }
+
+  /* The window: same structure as the desktop app, chrome outside, panel inset. */
+  .win {
+    position: relative; z-index: 2;
+    display: grid; grid-template-columns: 148px minmax(0, 1fr);
+    width: 720px; height: 540px;
+    margin-inline: auto;
+    background: var(--side);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-2xl);
+    box-shadow: var(--lift-far);
+    overflow: hidden;
+  }
+  .side { padding: var(--s-100) var(--s-75); overflow: hidden; }
+  .lights { display: flex; gap: var(--s-75); padding: var(--s-25) var(--s-50) var(--s-200); }
+  .lights i { width: var(--s-100); height: var(--s-100); border-radius: var(--r-full); background: #313131; }
+  .items { display: flex; flex-direction: column; gap: var(--s-25); }
+  .item {
+    display: flex; align-items: center; gap: var(--s-75); width: 100%;
+    height: 28px; padding-inline: var(--s-75);
+    text-align: left; font-size: 12px; line-height: 16px;
+    border-radius: var(--r-md);
+    transition: background-color var(--fade) var(--ease);
+  }
+  .item :global(.icon) { color: var(--dim); }
+  .item span:not(.icon) { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .item b { font-weight: 400; color: var(--dim); font-variant-numeric: tabular-nums; }
+  .item:hover { background: var(--field); }
+  .item.on { background: var(--chip); font-weight: 500; }
+
+  .panel { display: flex; flex-direction: column; min-width: 0; margin: var(--s-75) var(--s-75) var(--s-75) 0; background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; }
+  .top { display: flex; align-items: center; gap: var(--s-75); height: var(--s-500); padding-inline: var(--s-100); border-bottom: 1px solid var(--line); }
+  .search { display: flex; align-items: center; gap: var(--s-50); flex: 1; max-width: 220px; height: 24px; padding-inline: var(--s-75); background: var(--field); border: 1px solid var(--field-line); border-radius: var(--r-md); transition: border-color var(--fade) var(--ease); }
+  .search:focus-within { border-color: var(--focus); }
+  .search input { flex: 1; min-width: 0; border: 0; background: none; outline: none; font-size: 12px; line-height: 16px; color: var(--fg); -webkit-appearance: none; appearance: none; }
+  .search input::placeholder { color: var(--dim); }
+  .search input::-webkit-search-cancel-button { display: none; }
+  @media (pointer: coarse) { .search input { font-size: 16px; line-height: 24px; } } /* iOS zooms into anything smaller */
+  .total { margin-left: auto; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .grid { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-75); padding: var(--s-100); overflow: hidden; align-items: start; }
+  .col { display: flex; flex-direction: column; gap: var(--s-75); min-width: 0; }
+  .none { padding: var(--s-300); text-align: center; }
+  /* Rises from the bottom of the page, same motion as the extension's pill.
+     Transitions, not keyframes, so rapid likes retarget instead of restarting. */
+  .live {
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    position: fixed; left: 50%; bottom: var(--s-300); z-index: 60;
+    opacity: 0; transform: translate(-50%, calc(100% + var(--s-300)));
+    transition: transform 240ms var(--ease-out), opacity 240ms var(--ease-out);
+  }
+  .live.on { opacity: 1; transform: translate(-50%, 0); }
+  @media (prefers-reduced-motion: reduce) {
+    .live, .live.on { transform: translate(-50%, 0); transition: opacity 200ms var(--ease); }
+  }
+  .ghost { position: absolute; top: 0; left: 0; z-index: 20; color: var(--fg); opacity: 0; pointer-events: none; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6)); }
+
+  /* Flying card and the blue "just saved" flash. */
+  :global(.flyer) { position: absolute; z-index: 15; margin: 0; pointer-events: none; box-shadow: var(--lift-far); border-color: var(--saved); }
+  :global(.note.just) { border-color: var(--saved); }
+
+  /* Below this the posts no longer fit beside the window: they become a swipeable row. */
+  @media (max-width: 1279px) {
+    .posts { display: flex; gap: var(--s-100); margin-top: var(--s-600); padding: var(--s-200) var(--gutter); overflow-x: auto; scroll-snap-type: x proximity; scroll-padding-inline: var(--gutter); scrollbar-width: none; }
+    .posts::-webkit-scrollbar { display: none; }
+    .post { position: static; flex: none; scroll-snap-align: start; rotate: none; translate: none; }
+    .float { height: 100%; animation: none; }
+    .thumb { display: none; }
+    .like { margin-top: auto; }
+    .tryit { margin-top: var(--s-200); }
+    .win { width: calc(100% - var(--gutter) * 2); max-width: 720px; }
+  }
+  @media (max-width: 640px) {
+    .win { grid-template-columns: minmax(0, 1fr); height: 460px; }
+    .side { display: none; }
+    .panel { margin: var(--s-75); }
+    .hero { padding-top: 112px; }
+  }
+  @media (max-height: 800px) and (min-width: 1280px) {
+    .hero { padding-top: 104px; }
+  }
+</style>
+
+<script>
+  import { animate } from "motion";
+  import { matches } from "../scripts/search";
+
+  const hero = document.querySelector<HTMLElement>("[data-hero]")!;
+  const rail = hero.querySelector<HTMLElement>("[data-rail]")!;
+  const ghost = hero.querySelector<HTMLElement>("[data-ghost]")!;
+  const search = hero.querySelector<HTMLInputElement>("[data-search]")!;
+  const none = hero.querySelector<HTMLElement>("[data-none]")!;
+  const columns = [...hero.querySelectorAll<HTMLElement>("[data-col]")];
+  const filters = [...hero.querySelectorAll<HTMLButtonElement>("[data-filter]")];
+  const soundBtn = hero.querySelector<HTMLButtonElement>("[data-sound]")!;
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const EASE = [0.22, 1, 0.36, 1] as const;
+
+  const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  const relative = (el: Element) => {
+    const a = el.getBoundingClientRect();
+    const b = hero.getBoundingClientRect();
+    return { x: a.left - b.left, y: a.top - b.top, w: a.width, h: a.height };
+  };
+
+  /* Sound: the app's real save sound, only ever after a real click. */
+  let soundOn = true;
+  const chime = new Audio("/save.wav");
+  chime.volume = 0.3;
+  soundBtn.addEventListener("click", () => {
+    soundOn = !soundOn;
+    soundBtn.setAttribute("aria-pressed", String(soundOn));
+    soundBtn.querySelector("[data-sound-label]")!.textContent = soundOn ? "Sound on" : "Sound off";
+  });
+
+  /* Filtering: same behavior as the app. */
+  let source = "all";
+  function applyFilter() {
+    let shown = 0;
+    for (const note of hero.querySelectorAll<HTMLElement>("[data-grid] [data-note]")) {
+      const hit = (source === "all" || note.dataset.src === source) && matches(search.value, note.dataset.hay ?? "");
+      note.hidden = !hit;
+      note.style.display = hit ? "" : "none";
+      if (hit) shown++;
+    }
+    none.hidden = shown > 0;
+    hero.querySelector("[data-count='total']")!.textContent = String(shown);
+  }
+  search.addEventListener("input", applyFilter);
+  const setSource = (s: string) => {
+    source = s;
+    for (const f of filters) {
+      const on = f.dataset.filter === s;
+      f.classList.toggle("on", on);
+      if (on) f.setAttribute("aria-current", "true");
+      else f.removeAttribute("aria-current");
+    }
+    applyFilter();
+  };
+  for (const f of filters) f.addEventListener("click", () => setSource(f.dataset.filter!));
+
+  const bump = (key: string) => {
+    const el = hero.querySelector<HTMLElement>(`[data-count="${key}"]`);
+    if (!el) return;
+    el.textContent = String(Number(el.textContent) + 1);
+    if (!reduced) animate(el, { scale: [1.6, 1] }, { duration: 0.5, ease: EASE });
+    const row = el.closest<HTMLElement>("[data-filter]");
+    if (row?.hidden) {
+      row.hidden = false;
+      if (!reduced) animate(row, { opacity: [0, 1], x: [-8, 0] }, { duration: 0.5, ease: EASE });
+    }
+  };
+
+  /* The pill says it was saved, for as long as the extension shows it. */
+  const toast = hero.querySelector<HTMLElement>("[data-toast]")!;
+  let toastTimer = 0;
+  const showToast = () => {
+    if (!visible) return; // a click the ghost started just before you scrolled away
+    toast.classList.add("on");
+    clearTimeout(toastTimer);
+    toastTimer = window.setTimeout(() => toast.classList.remove("on"), 1600);
+  };
+
+  /* Liking: the card flies out of the button and lands in the shortest column. */
+  async function save(post: HTMLElement, real: boolean) {
+    const btn = post.querySelector<HTMLButtonElement>("[data-like]")!;
+    if (btn.getAttribute("aria-pressed") === "true") return;
+    btn.setAttribute("aria-pressed", "true");
+    btn.classList.add("pop");
+    btn.querySelector("[data-label]")!.textContent = btn.dataset.did!;
+    showToast();
+    if (real && soundOn) {
+      chime.currentTime = 0;
+      chime.play().catch(() => {});
+    }
+
+    // A new save should be visible, so clear whatever filter is on.
+    if (source !== "all" || search.value) {
+      search.value = "";
+      setSource("all");
+    }
+
+    const tpl = hero.querySelector<HTMLTemplateElement>(`[data-tpl="${post.dataset.post}"]`)!;
+    const card = tpl.content.firstElementChild!.cloneNode(true) as HTMLElement;
+    const col = columns.reduce((a, b) => (a.offsetHeight <= b.offsetHeight ? a : b));
+
+    // Make room with a FLIP, so neighbours slide instead of jumping.
+    const before = new Map([...col.children].map((c) => [c, c.getBoundingClientRect().top]));
+    col.prepend(card);
+    for (const [el, top] of before) {
+      const dy = top - el.getBoundingClientRect().top;
+      if (dy && !reduced) animate(el, { y: [dy, 0] }, { duration: 0.6, ease: EASE });
+    }
+
+    if (reduced) {
+      animate(card, { opacity: [0, 1] }, { duration: 0.3, ease: EASE });
+    } else {
+      card.style.visibility = "hidden";
+      const from = relative(btn);
+      const to = relative(card);
+      const flyer = card.cloneNode(true) as HTMLElement;
+      flyer.classList.add("flyer");
+      flyer.style.cssText = `left:${to.x}px;top:${to.y}px;width:${to.w}px;visibility:visible;transform-origin:center`;
+      hero.append(flyer);
+      const dx = from.x + from.w / 2 - (to.x + to.w / 2);
+      const dy = from.y + from.h / 2 - (to.y + to.h / 2);
+      await animate(
+        flyer,
+        { x: [dx, dx * 0.45, 0], y: [dy, Math.min(dy, 0) * 0.5 - 80, 0], scale: [0.3, 1.12, 1], rotate: [-10, 5, 0], opacity: [0, 1, 1] },
+        { duration: 0.9, ease: EASE },
+      );
+      flyer.remove();
+      card.style.visibility = "";
+    }
+    card.classList.add("just");
+    setTimeout(() => card.classList.remove("just"), 1200);
+    bump("all");
+    bump("total");
+    bump(card.dataset.src!);
+  }
+
+  const posts = [...hero.querySelectorAll<HTMLElement>("[data-post]")];
+  for (const post of posts) post.querySelector("[data-like]")!.addEventListener("click", () => save(post, true));
+
+  /* Ghost cursor: shows how it works until the visitor takes over. */
+  let tookOver = reduced;
+  let visible = true;
+  new IntersectionObserver(([e]) => {
+    visible = e.isIntersecting;
+    if (!visible) toast.classList.remove("on"); // the pill is fixed, so it would follow you down the page
+  }, { threshold: 0.25 }).observe(rail.closest(".stage")!);
+  const takeOver = () => {
+    if (tookOver) return;
+    tookOver = true;
+    animate(ghost, { opacity: 0 }, { duration: 0.3, ease: EASE });
+  };
+  for (const el of [rail, hero.querySelector("[data-win]")!]) el.addEventListener("pointerdown", takeOver);
+  search.addEventListener("focus", (e) => { if ((e as FocusEvent).isTrusted) takeOver(); });
+
+  const goTo = async (el: Element) => {
+    const r = relative(el);
+    await animate(ghost, { x: r.x + r.w * 0.5, y: r.y + r.h * 0.5, opacity: 1 }, { duration: 0.9, ease: EASE });
+  };
+  const press = () => animate(ghost, { scale: [1, 0.75, 1] }, { duration: 0.3, ease: EASE });
+
+  async function tour() {
+    await wait(2200);
+    for (const post of posts) {
+      while (!visible && !tookOver) await wait(300);
+      if (tookOver) return;
+      const btn = post.querySelector("[data-like]")!;
+      if (btn.getAttribute("aria-pressed") === "true") continue;
+      if (rail.scrollWidth > rail.clientWidth) {
+        rail.scrollTo({ left: post.offsetLeft - rail.offsetLeft - 16, behavior: "smooth" });
+        await wait(400);
+      }
+      await goTo(btn);
+      if (tookOver) return;
+      press();
+      save(post, false);
+      await wait(1500);
+    }
+    // Then show the part that makes it useful: finding one of them again.
+    if (tookOver) return;
+    await goTo(search);
+    press();
+    for (const ch of "sourdough") {
+      if (tookOver) return;
+      search.value += ch;
+      applyFilter();
+      await wait(110);
+    }
+    await wait(2600);
+    if (tookOver) return;
+    search.value = "";
+    applyFilter();
+    animate(ghost, { opacity: 0 }, { duration: 0.5, ease: EASE });
+  }
+  if (!reduced) tour();
+
+  /* Depth: posts drift with the pointer and scroll, wide screens only. */
+  if (!reduced && matchMedia("(min-width: 1280px) and (hover: hover)").matches) {
+    let frame = 0;
+    hero.addEventListener("pointermove", (e) => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        rail.style.setProperty("--px", String(e.clientX / innerWidth - 0.5));
+        rail.style.setProperty("--py", String(e.clientY / innerHeight - 0.5));
+      });
+    });
+    import("motion").then(({ scroll }) =>
+      scroll((p: number) => rail.style.setProperty("--sy", String(p)), { target: hero, offset: ["start start", "end start"] }),
+    );
+  }
+</script>

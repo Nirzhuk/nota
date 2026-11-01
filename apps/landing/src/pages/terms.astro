@@ -1,0 +1,17 @@
+---
+import Base from "../layouts/base.astro";
+import Nota from "../components/nota.astro";
+import { REPO } from "../release";
+---
+<Base title="Terms | Nota" description="The terms for using Nota.">
+  <article class="wrap prose">
+    <a class="textlink caption-2 back" href="/">Back to the home page</a>
+    <h1 class="heading-2">Terms</h1>
+    <p class="body-3 dim"><Nota /> is free software under the <a class="textlink" href={`${REPO}/blob/main/LICENSE`}>MIT license</a>. That license is the whole agreement: you can use, copy, change and share <Nota />, and it comes as is, without warranty of any kind.</p>
+    <p class="body-3 dim">What you save stays yours, and the sites you save from keep their own rules about their content.</p>
+  </article>
+</Base>
+<style>
+  .prose { display: flex; flex-direction: column; gap: var(--s-200); max-width: 680px; padding-top: 128px; padding-bottom: var(--s-900); }
+  .back { align-self: flex-start; }
+</style>

@@ -1,0 +1,25 @@
+---
+import { release, REPO } from "../release";
+---
+<footer class="foot wrap">
+  <a class="brand title-4" href="/"><img src="/img/logo.png" width="24" height="24" alt="" />Nota</a>
+  <div class="about">
+    <p class="caption-5 dim">Free and open source under the MIT license{release.version && `. Latest version ${release.version}`}.</p>
+    <p class="caption-5 dim">Made by Nirzhuk · <a class="textlink" href="https://nirzhuk.dev">nirzhuk.dev</a> · <a class="textlink" href="https://x.com/nirzhuk">@nirzhuk on X</a></p>
+  </div>
+  <ul>
+    <li><a class="caption-4" href={REPO}>GitHub</a></li>
+    <li><a class="caption-4" href={release.all}>Releases</a></li>
+    <li><a class="caption-4" href="/privacy">Privacy</a></li>
+    <li><a class="caption-4" href="/terms">Terms</a></li>
+  </ul>
+</footer>
+<style>
+  .foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-200); padding-block: var(--s-400); }
+  .brand { display: flex; align-items: center; gap: var(--s-75); text-decoration: none; }
+  .about { display: flex; flex-direction: column; gap: var(--s-25); }
+  ul { display: flex; flex-wrap: wrap; gap: var(--s-200); margin-left: auto; }
+  ul a { color: var(--dim); text-decoration: none; transition: color var(--fade) var(--ease); }
+  ul a:hover { color: var(--fg); }
+  @media (max-width: 720px) { ul { margin-left: 0; width: 100%; } }
+</style>

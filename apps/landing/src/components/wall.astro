@@ -1,0 +1,133 @@
+---
+import Icon from "./icon.astro";
+import NoteCard from "./note.astro";
+import { WALL } from "../notes";
+const presets = ["sourdough", "rust", "design", "#read later"];
+---
+<section class="wall band" id="find" data-wall>
+  <div class="wrap">
+    <div class="head reveal">
+      <h2 class="heading-2">Remember one word.<br />That's enough.</h2>
+      <p class="body-3">Every word you type has to match, and tags count. This is the real rule from the app, running on {WALL.length} sample saves. Try it.</p>
+    </div>
+    <label class="field reveal">
+        <Icon name="search" size={20} />
+        <span class="sr-only">Search the sample saves</span>
+        <input class="title-2" type="search" placeholder="Search" autocomplete="off" data-q />
+      <span class="count caption-5 dim" data-n aria-live="polite">{WALL.length} of {WALL.length}</span>
+    </label>
+    <div class="presets reveal">
+      {presets.map((p) => <button class="preset caption-4" type="button" data-p={p}>{p}</button>)}
+    </div>
+    <div class="cards reveal" data-cards>
+      {WALL.map((n) => <NoteCard note={n} />)}
+    </div>
+    <p class="caption-2 dim none" data-none hidden>Nothing matches. Every word has to match, so try fewer words.</p>
+  </div>
+</section>
+<style>
+  .field {
+    position: sticky; top: var(--s-800); z-index: 5;
+    display: flex; align-items: center; gap: var(--s-100);
+    padding: var(--s-100) var(--s-200);
+    background: rgba(35, 35, 37, 0.85);
+    -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+    border: 1px solid var(--line-strong); border-radius: var(--r-xl);
+    box-shadow: var(--lift);
+    color: var(--dim);
+    transition: border-color var(--fade) var(--ease);
+  }
+  .field:focus-within { border-color: var(--focus); }
+  .field input { flex: 1; min-width: 0; border: 0; background: none; outline: none; color: var(--fg); -webkit-appearance: none; appearance: none; }
+  .field input::placeholder { color: var(--dim); }
+  .field input::-webkit-search-cancel-button { display: none; }
+  .count { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .presets { display: flex; flex-wrap: wrap; gap: var(--s-50); margin-block: var(--s-100) var(--s-300); }
+  .preset { padding: var(--s-50) var(--s-75); background: var(--chip); color: var(--dim); border-radius: var(--r-full); transition: color var(--fade) var(--ease), background-color var(--fade) var(--ease), transform var(--fade) var(--ease); }
+  .preset:hover { color: var(--fg); background: var(--line-strong); transform: translateY(-1px); }
+  .preset:active { transform: scale(0.98); }
+  .cards { columns: 4 240px; column-gap: var(--s-75); }
+  .cards :global(.note) { break-inside: avoid; margin-bottom: var(--s-75); }
+  .cards :global(.note.miss) { opacity: 0.12; transform: scale(0.97); }
+  .cards :global(.note.hit) { border-color: var(--saved); transform: scale(1.02); }
+  .none { padding-top: var(--s-200); }
+  @media (max-width: 720px) {
+    .cards { columns: 2 150px; }
+  }
+</style>
+<script>
+  import { matches } from "../scripts/search";
+
+  const root = document.querySelector<HTMLElement>("[data-wall]")!;
+  const input = root.querySelector<HTMLInputElement>("[data-q]")!;
+  const count = root.querySelector<HTMLElement>("[data-n]")!;
+  const none = root.querySelector<HTMLElement>("[data-none]")!;
+  const notes = [...root.querySelectorAll<HTMLElement>("[data-note]")];
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function apply() {
+    const q = input.value.trim();
+    let shown = 0;
+    for (const n of notes) {
+      const hit = matches(q, n.dataset.hay ?? "");
+      n.classList.toggle("miss", !hit);
+      n.classList.toggle("hit", hit && !!q);
+      if (hit) shown++;
+    }
+    count.textContent = `${shown} of ${notes.length}`;
+    none.hidden = shown > 0;
+  }
+  input.addEventListener("input", apply);
+
+  /* The wall types for itself until someone touches it. */
+  let touched = reduced;
+  const stop = () => { touched = true; };
+  input.addEventListener("pointerdown", stop);
+  input.addEventListener("keydown", stop);
+  const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  let visible = false;
+
+  async function type(word: string) {
+    for (let i = 1; i <= word.length; i++) {
+      if (touched) return;
+      input.value = word.slice(0, i);
+      apply();
+      await wait(90);
+    }
+    await wait(2000);
+    for (let i = word.length; i >= 0; i--) {
+      if (touched) return;
+      input.value = word.slice(0, i);
+      apply();
+      await wait(30);
+    }
+    await wait(500);
+  }
+  async function loop() {
+    const words = [...root.querySelectorAll<HTMLElement>("[data-p]")].map((b) => b.dataset.p!);
+    while (!touched) {
+      for (const w of words) {
+        while (!visible && !touched) await wait(300);
+        if (touched) return;
+        await type(w);
+      }
+    }
+  }
+
+  for (const b of root.querySelectorAll<HTMLButtonElement>("[data-p]")) {
+    b.addEventListener("click", () => {
+      stop();
+      input.value = b.dataset.p!;
+      apply();
+    });
+  }
+
+  let started = false;
+  new IntersectionObserver(([e]) => {
+    visible = e.isIntersecting;
+    if (visible && !started && !reduced) {
+      started = true;
+      loop();
+    }
+  }, { rootMargin: "-20% 0px" }).observe(root);
+</script>

@@ -1,0 +1,35 @@
+---
+import WithLogo from "./with-logo.astro";
+import { FAQ } from "../faq";
+---
+<section class="faq band" id="faq">
+  <div class="wrap inner">
+    <h2 class="heading-2 reveal">Questions</h2>
+    <div class="list reveal">
+      {FAQ.map((f) => (
+        <details>
+          <summary class="title-3"><span><WithLogo text={f.q} /></span><span class="plus" aria-hidden="true"></span></summary>
+          <p class="body-3 dim answer"><WithLogo text={f.a} /></p>
+        </details>
+      ))}
+    </div>
+  </div>
+</section>
+<style>
+  .inner { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: var(--s-600); }
+  .list { display: flex; flex-direction: column; }
+  details { border-top: 1px solid var(--line); }
+  details:last-child { border-bottom: 1px solid var(--line); }
+  summary { display: flex; align-items: center; justify-content: space-between; gap: var(--s-200); padding-block: var(--s-200); cursor: pointer; list-style: none; transition: color var(--fade) var(--ease); }
+  summary::-webkit-details-marker { display: none; }
+  summary:hover { color: #fff; }
+  .plus { position: relative; flex: none; width: var(--s-200); height: var(--s-200); }
+  .plus::before, .plus::after { content: ""; position: absolute; left: 0; right: 0; top: 7px; height: 2px; background: var(--dim); border-radius: var(--r-full); transition: transform var(--move) var(--ease); }
+  .plus::after { transform: rotate(90deg); }
+  details[open] .plus::before { transform: rotate(45deg); }
+  details[open] .plus::after { transform: rotate(135deg); }
+  .answer { max-width: 620px; padding-bottom: var(--s-300); }
+  details[open] .answer { animation: open var(--move) var(--ease); }
+  @keyframes open { from { opacity: 0; transform: translateY(calc(var(--s-100) * -1)); } }
+  @media (max-width: 860px) { .inner { grid-template-columns: minmax(0, 1fr); gap: var(--s-300); } }
+</style>

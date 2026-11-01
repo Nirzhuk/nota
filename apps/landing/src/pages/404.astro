@@ -1,0 +1,15 @@
+---
+import Base from "../layouts/base.astro";
+import Nota from "../components/nota.astro";
+---
+<Base title="Page not found | Nota" description="This page doesn't exist.">
+  <section class="wrap box">
+    <img src="/img/logo.png" width="96" height="96" alt="" />
+    <h1 class="heading-2"><Nota /> didn't save this one.</h1>
+    <p class="body-3 dim">The page you're after doesn't exist. It may have moved, or the link may have a typo.</p>
+    <a class="btn button-md" href="/">Back to the home page</a>
+  </section>
+</Base>
+<style>
+  .box { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s-200); min-height: 80vh; text-align: center; padding-top: var(--s-900); }
+</style>

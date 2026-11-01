@@ -1,0 +1,120 @@
+---
+import { REPO } from "../release";
+const items = [
+  ["Desktop app", "$0.00"],
+  ["Chrome extension", "$0.00"],
+  ["Saves from 7 sites", "$0.00"],
+  ["Search, folders, tags", "$0.00"],
+  ["Every update", "$0.00"],
+];
+const none = [["Account", "none"], ["Subscription", "none"], ["Trial ending", "never"]];
+const bars = [3, 1, 2, 1, 4, 2, 1, 3, 1, 1, 2, 4, 1, 2, 3, 1, 2, 1, 4, 1, 3, 2, 1, 2, 1, 3, 4, 1, 2, 1];
+---
+<section class="free band" id="free" data-free>
+  <div class="wrap grid">
+    <div class="copy">
+      <p class="heading-0 reveal" aria-hidden="true">$0</p>
+      <h2 class="heading-2 reveal" style="--i:1">Free means free.</h2>
+      <p class="body-3 dim reveal" style="--i:2">
+        The app and the extension cost nothing. No paid tier is waiting behind a limit, no trial clock is running,
+        and there's no account to make. Your saves sit on your own disk, so there's no storage bill to pass on to you.
+      </p>
+      <p class="body-3 dim reveal" style="--i:3">
+        The code is MIT licensed. Read it, change it, keep it.{" "}
+        <a class="textlink" href={REPO}>See the source on GitHub</a>
+      </p>
+    </div>
+
+    <div class="printer" aria-label="A receipt showing that everything in Nota costs $0.00" role="img">
+      <div class="slot"><span></span></div>
+      <div class="clip">
+        <div class="paper" data-paper>
+          <div class="rhead">
+            <img src="/img/logo.png" width="40" height="40" alt="" />
+            <strong>NOTA</strong>
+            <span>Thanks for clicking like</span>
+          </div>
+          <ul class="items">
+            {items.map(([k, v]) => <li><span>{k}</span><span>{v}</span></li>)}
+          </ul>
+          <ul class="items">
+            {none.map(([k, v]) => <li><span>{k}</span><span>{v}</span></li>)}
+          </ul>
+          <div class="total"><span>Total</span><span>$0.00</span></div>
+          <div class="bars">{bars.map((b) => <i style={`flex-grow:${b}`}></i>)}</div>
+          <p class="fine">Keep this receipt. You won't need it.</p>
+          <span class="stamp" data-stamp>NOTHING DUE</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<style>
+  .free { overflow: clip; }
+  .grid { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: var(--s-800); align-items: center; }
+  .copy { display: flex; flex-direction: column; gap: var(--s-200); max-width: 560px; }
+
+  .printer { position: relative; }
+  .slot { position: relative; z-index: 2; height: var(--s-500); padding: var(--s-100) var(--s-200); background: var(--card); border: 1px solid var(--line-strong); border-radius: var(--r-xl); box-shadow: var(--lift); }
+  .slot span { display: block; height: var(--s-100); background: #000; border-radius: var(--r-full); }
+  .clip { margin: calc(var(--s-300) * -1) var(--s-300) 0; padding-bottom: var(--s-200); overflow: hidden; }
+  .paper {
+    position: relative;
+    padding: var(--s-500) var(--s-300) var(--s-400);
+    background: var(--paper); color: var(--ink);
+    font-family: var(--mono); font-size: 14px; line-height: 20px;
+    will-change: transform;
+    /* torn edge at the bottom */
+    --m: conic-gradient(from -45deg at bottom, transparent, #000 1deg 89deg, transparent 90deg) 50% / 16px 100%;
+    -webkit-mask: var(--m);
+    mask: var(--m);
+  }
+  .rhead { display: flex; flex-direction: column; align-items: center; gap: var(--s-50); padding-bottom: var(--s-200); text-align: center; }
+  .rhead strong { font-size: 18px; line-height: 28px; font-weight: 600; letter-spacing: 0.2em; }
+  .rhead span { font-size: 12px; line-height: 16px; color: #6e6e73; }
+  .items { display: flex; flex-direction: column; gap: var(--s-50); padding-block: var(--s-100); border-top: 1px dashed rgba(0, 0, 0, 0.3); }
+  .items li, .total { display: flex; justify-content: space-between; gap: var(--s-100); }
+  .total { padding-block: var(--s-100); border-block: 2px solid var(--ink); font-size: 18px; line-height: 28px; font-weight: 600; }
+  .bars { display: flex; gap: var(--s-25); height: var(--s-500); margin-top: var(--s-200); }
+  .bars i { display: block; background: var(--ink); }
+  .bars i:nth-child(3n) { background: transparent; }
+  .fine { margin-top: var(--s-100); text-align: center; font-size: 12px; line-height: 16px; color: #6e6e73; }
+  .stamp {
+    position: absolute; right: var(--s-300); bottom: var(--s-800);
+    padding: var(--s-50) var(--s-100);
+    border: 4px solid var(--saved); color: var(--saved); border-radius: var(--r-lg);
+    font-size: 24px; line-height: 32px; font-weight: 600; white-space: nowrap;
+    transform: rotate(-12deg);
+    opacity: 0;
+  }
+  :global(html:not(.js)) .stamp { opacity: 1; }
+
+  @media (max-width: 960px) {
+    .grid { grid-template-columns: minmax(0, 1fr); gap: var(--s-600); }
+    .printer { width: min(100%, 400px); margin-inline: auto; }
+  }
+  @media (prefers-reduced-motion: reduce) { .stamp { opacity: 1; } }
+</style>
+<script>
+  import { animate, scroll } from "motion";
+
+  const paper = document.querySelector<HTMLElement>("[data-paper]")!;
+  const stamp = document.querySelector<HTMLElement>("[data-stamp]")!;
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    let stamped = false;
+    scroll(
+      (p: number) => {
+        // Prints in short steps, like a thermal printer feeding paper.
+        const fed = Math.round(p * 28) / 28;
+        paper.style.transform = `translate3d(0,${(fed - 1) * 100}%,0)`;
+        if (fed >= 1 && !stamped) {
+          stamped = true;
+          animate(stamp, { opacity: [0, 1], scale: [3, 1], rotate: [-4, -12] }, { duration: 0.4, ease: [0.22, 1, 0.36, 1] }).then(() =>
+            animate(paper, { y: [0, 6, 0] }, { duration: 0.3, ease: [0.22, 1, 0.36, 1] }),
+          );
+        }
+      },
+      { target: paper.parentElement!, offset: ["start 80%", "end 95%"] },
+    );
+  }
+</script>

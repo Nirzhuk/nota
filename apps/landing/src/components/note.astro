@@ -1,0 +1,21 @@
+---
+import Icon from "./icon.astro";
+import { SITES, type Note } from "../notes";
+interface Props { note: Note }
+const { note: n } = Astro.props;
+const hay = [SITES[n.source].label, n.author, n.title, n.text, ...(n.tags ?? []).map((t) => `#${t}`)]
+  .filter(Boolean)
+  .join(" ")
+  .toLowerCase();
+---
+<article class="note" data-note data-src={n.source} data-hay={hay}>
+  <div class="meta"><Icon name={SITES[n.source].icon} size={12} /><span class="author">{n.author}</span></div>
+  {n.title && <h3>{n.title}</h3>}
+  {n.text && <p>{n.text}</p>}
+  {n.tile === "video" && <div class="tile"><Icon name="play" size={24} /></div>}
+  {n.tile === "image" && <div class="tile square"><Icon name="image" size={24} /></div>}
+  <div class="bar">
+    <span>{n.when}</span>
+    {n.tags?.map((t) => <span class="chip">#{t}</span>)}
+  </div>
+</article>

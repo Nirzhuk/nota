@@ -1,0 +1,90 @@
+/* Nota design system, web edition.
+   Colors, hairlines and the "floating panel on darker chrome" idea come from
+   apps/desktop/src/styles.css (dark theme). Type, spacing, radius and motion
+   come from the landing page design rules. Blue only ever means "saved". */
+:root {
+  /* color: desktop dark theme */
+  --side: #121214; /* window chrome, the page itself */
+  --bg: #1c1c1e; /* inset panel */
+  --card: #232325;
+  --line: rgba(255, 255, 255, 0.07);
+  --line-strong: rgba(255, 255, 255, 0.14);
+  --fg: #f2f2f7;
+  --dim: #8e8e93;
+  --chip: rgba(255, 255, 255, 0.07);
+  --field: rgba(255, 255, 255, 0.05);
+  --field-line: rgba(255, 255, 255, 0.1);
+  --focus: #7b9cff;
+  --saved: #0a84ff;
+  --ok: #30d158; /* the check in the extension's pill */
+  --paper: #f2f2f7; /* the receipt */
+  --ink: #121214;
+  color-scheme: dark;
+
+  /* spacing */
+  --s-25: 2px;
+  --s-50: 4px;
+  --s-75: 8px;
+  --s-100: 12px;
+  --s-200: 16px;
+  --s-300: 24px;
+  --s-400: 32px;
+  --s-500: 40px;
+  --s-600: 48px;
+  --s-700: 64px;
+  --s-800: 80px;
+  --s-900: 96px;
+
+  /* radius */
+  --r-sm: 4px;
+  --r-md: 6px;
+  --r-lg: 8px;
+  --r-xl: 12px;
+  --r-2xl: 16px;
+  --r-3xl: 24px;
+  --r-full: 9999px;
+
+  /* motion */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --move: 500ms;
+  --fade: 300ms;
+
+  /* layered depth, same recipe as the app's floating toasts */
+  --lift: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --lift-far: 0 24px 80px rgba(0, 0, 0, 0.5);
+
+  --page: 1200px;
+  --gutter: var(--s-300);
+  --font: "Geist Variable", system-ui, sans-serif;
+  --mono: "Geist Mono Variable", ui-monospace, monospace;
+}
+
+/* Text styles. Everything on the page uses one of these names. */
+.heading-0 { font-size: 128px; line-height: 1; font-weight: 600; letter-spacing: -0.04em; } /* one number, once */
+.heading-1 { font-size: 60px; line-height: 60px; font-weight: 600; letter-spacing: -0.03em; }
+.heading-2 { font-size: 48px; line-height: 48px; font-weight: 600; letter-spacing: -0.025em; }
+.heading-3 { font-size: 36px; line-height: 40px; font-weight: 600; letter-spacing: -0.02em; }
+.heading-4 { font-size: 30px; line-height: 36px; font-weight: 600; letter-spacing: -0.015em; }
+.heading-5 { font-size: 24px; line-height: 32px; font-weight: 600; letter-spacing: -0.01em; }
+.heading-6 { font-size: 20px; line-height: 28px; font-weight: 600; }
+.title-2 { font-size: 18px; line-height: 28px; font-weight: 500; }
+.title-3 { font-size: 16px; line-height: 24px; font-weight: 500; }
+.title-4 { font-size: 14px; line-height: 20px; font-weight: 500; }
+.title-5 { font-size: 12px; line-height: 16px; font-weight: 500; }
+.body-3 { font-size: 16px; line-height: 24px; font-weight: 400; }
+.body-5 { font-size: 14px; line-height: 20px; font-weight: 500; }
+.body-6 { font-size: 14px; line-height: 20px; font-weight: 400; }
+.button-md { font-size: 16px; line-height: 24px; font-weight: 600; }
+.button-sm { font-size: 14px; line-height: 20px; font-weight: 600; }
+.caption-2 { font-size: 14px; line-height: 20px; font-weight: 400; }
+.caption-4 { font-size: 12px; line-height: 16px; font-weight: 500; }
+.caption-5 { font-size: 12px; line-height: 16px; font-weight: 400; }
+
+@media (max-width: 720px) {
+  .heading-0 { font-size: 96px; }
+  .heading-1 { font-size: 36px; line-height: 40px; }
+  .heading-2 { font-size: 30px; line-height: 36px; }
+  .heading-3 { font-size: 24px; line-height: 32px; }
+  .heading-4 { font-size: 24px; line-height: 32px; }
+  :root { --gutter: var(--s-200); }
+}

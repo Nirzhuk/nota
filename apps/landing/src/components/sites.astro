@@ -1,0 +1,38 @@
+---
+import Icon from "./icon.astro";
+import { SAVES, SITES } from "../notes";
+const row = SAVES.map((s) => ({ ...SITES[s.site], verbs: s.verbs }));
+---
+<section class="sites" aria-label="What Nota saves">
+  <ul class="sr-only">
+    {row.map((s) => <li>{s.label}: {s.verbs}</li>)}
+  </ul>
+  {[0, 1].map((r) => (
+    <div class="row" data-row={r} aria-hidden="true">
+      {[...row, ...row, ...row].map((s) => (
+        <span class="pill title-2"><Icon name={s.icon} size={20} /><b>{s.label}</b><span class="dim">{s.verbs}</span></span>
+      ))}
+    </div>
+  ))}
+</section>
+<style>
+  .sites { display: flex; flex-direction: column; gap: var(--s-100); padding-block: var(--s-600); overflow: clip; border-block: 1px solid var(--line); }
+  .row { display: flex; gap: var(--s-100); width: max-content; will-change: transform; }
+  .pill { display: inline-flex; align-items: center; gap: var(--s-75); padding: var(--s-75) var(--s-200); background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-full); white-space: nowrap; }
+  .pill b { font-weight: 500; }
+  @media (prefers-reduced-motion: reduce) { .row { width: auto; flex-wrap: wrap; justify-content: center; } .row:nth-of-type(n+2) { display: none; } }
+</style>
+<script>
+  import { scroll } from "motion";
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const rows = document.querySelectorAll<HTMLElement>("[data-row]");
+    scroll(
+      (p: number) => {
+        const offset = 600 * p;
+        rows[0].style.transform = `translate3d(${-200 - offset}px,0,0)`;
+        rows[1].style.transform = `translate3d(${-800 + offset}px,0,0)`;
+      },
+      { target: rows[0].closest("section")!, offset: ["start end", "end start"] },
+    );
+  }
+</script>

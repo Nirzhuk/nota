@@ -1,0 +1,32 @@
+---
+import Nota from "./nota.astro";
+const lines = ["You already did the hard part.", "You found the good stuff.", "Nota makes sure you can find it twice."];
+---
+<section class="tagline" data-tagline>
+  <p class="heading-1">
+    {lines.map((l) => <span class="ln">{l.split(" ").map((w) => <><span class="w" data-w>{w === "Nota" ? <Nota /> : w}</span>{" "}</>)}</span>)}
+  </p>
+</section>
+<style>
+  .tagline { height: 240vh; padding-inline: var(--gutter); }
+  .tagline p { position: sticky; top: 0; display: flex; flex-direction: column; justify-content: center; gap: var(--s-75); height: 100vh; height: 100svh; max-width: 1152px; margin-inline: auto; }
+  .ln { display: block; text-wrap: balance; }
+  .w { opacity: 0.3; transition: opacity var(--fade) var(--ease); }
+  .w.on { opacity: 1; }
+  :global(html:not(.js)) .w { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) { .w { opacity: 1; } .tagline { height: auto; padding-block: var(--s-900); } .tagline p { position: static; height: auto; } }
+</style>
+<script>
+  import { scroll } from "motion";
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const root = document.querySelector<HTMLElement>("[data-tagline]")!;
+    const words = [...root.querySelectorAll<HTMLElement>("[data-w]")];
+    scroll(
+      (p: number) => {
+        const lit = Math.floor(p * (words.length + 1));
+        words.forEach((w, i) => w.classList.toggle("on", i < lit));
+      },
+      { target: root, offset: ["start start", "end end"] },
+    );
+  }
+</script>

@@ -1,0 +1,21 @@
+---
+import Icon from "./icon.astro";
+import Nota from "./nota.astro";
+import { release } from "../release";
+---
+<div class="dl">
+  <a class="btn button-md only-mac" href={release.mac}><Icon name="apple" />Download for Mac</a>
+  <a class="btn button-md only-win" href={release.win}><Icon name="windows" />Download for Windows</a>
+  <a class="btn button-md only-other" href={release.all}><Icon name="download" /><span>Download <Nota /> free</span></a>
+  <p class="caption-5 dim">
+    <span class="only-mac"><a class="textlink" href={release.win}>Also for Windows</a></span>
+    <span class="only-win"><a class="textlink" href={release.mac}>Also for Mac</a></span>
+    <span class="only-other">For Mac and Windows</span>
+  </p>
+</div>
+<style>
+  .dl { display: flex; flex-direction: column; align-items: center; gap: var(--s-75); }
+  .dl p span { gap: var(--s-50); }
+  .dl p span.only-other { display: inline; }
+  :global(html.os-mac) .dl p span.only-other, :global(html.os-win) .dl p span.only-other { display: none; }
+</style>

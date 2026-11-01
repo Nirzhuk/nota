@@ -1,0 +1,69 @@
+---
+import NoteCard from "./note.astro";
+import Download from "./download.astro";
+import Needs from "./needs.astro";
+import { POSTS } from "../notes";
+const fan = [
+  { x: -480, y: -60, r: -14 },
+  { x: -300, y: -170, r: -7 },
+  { x: -300, y: 90, r: 9 },
+  { x: 300, y: -170, r: 7 },
+  { x: 300, y: 90, r: -9 },
+  { x: 480, y: -60, r: 14 },
+];
+const cards = POSTS.filter((p) => !p.tile).concat(POSTS.filter((p) => p.tile)).slice(0, 6);
+---
+<section class="cta" data-cta>
+  <div class="fan" aria-hidden="true">
+    {cards.map((p, i) => (
+      <div class="fc" data-fc data-x={fan[i].x} data-y={fan[i].y} data-r={fan[i].r} style={`--x:${fan[i].x};--y:${fan[i].y};--r:${fan[i].r}`}>
+        <NoteCard note={{ ...p, when: "soon" }} />
+      </div>
+    ))}
+    <img class="logo" src="/img/logo.png" width="160" height="160" alt="Nota logo" data-logo />
+  </div>
+  <div class="txt wrap">
+    <h2 class="heading-1 reveal">The next good thing you find,<br />you keep.</h2>
+    <div class="reveal" style="--i:1"><Download /></div>
+    <div class="reveal" style="--i:2"><Needs /></div>
+    <p class="caption-2 dim reveal" style="--i:3">Open source. Nothing goes to a server.</p>
+  </div>
+</section>
+<style>
+  .cta { padding-block: var(--s-900); overflow: clip; }
+  .fan { position: relative; height: 480px; display: grid; place-items: center; }
+  .fc { position: absolute; left: 50%; top: 50%; width: 240px; margin: -48px 0 0 -120px; opacity: 0; transform: translate(calc(var(--x) * 1px), calc(var(--y) * 1px)) rotate(calc(var(--r) * 1deg)); will-change: transform, opacity; }
+  .fc :global(.note) { box-shadow: var(--lift); }
+  .logo { position: relative; z-index: 2; filter: drop-shadow(0 16px 40px rgba(0, 0, 0, 0.6)); }
+  .txt { display: flex; flex-direction: column; align-items: center; gap: var(--s-300); text-align: center; }
+  .txt h2 { max-width: 960px; }
+  :global(html:not(.js)) .fc { opacity: 1; }
+  @media (max-width: 720px) {
+    .fan { height: 360px; }
+    .fc { width: 160px; margin-left: -80px; }
+    .logo { width: 112px; height: 112px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .fc { opacity: 1; } }
+</style>
+<script>
+  import { animate, scroll } from "motion";
+
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const root = document.querySelector<HTMLElement>("[data-cta]")!;
+    const fan = root.querySelector<HTMLElement>(".fan")!;
+    const EASE = [0.22, 1, 0.36, 1] as const;
+    const k = Math.min(1, innerWidth / 1200) * (innerWidth < 720 ? 0.75 : 1);
+    for (const el of root.querySelectorAll<HTMLElement>("[data-fc]")) {
+      const { x, y, r } = el.dataset;
+      el.style.transform = "";
+      scroll(
+        animate(el, { x: [0, Number(x) * k], y: [0, Number(y)], rotate: [0, Number(r)], opacity: [0, 1], scale: [0.5, 1] }, { ease: EASE }),
+        { target: fan, offset: ["start 95%", "center 55%"] },
+      );
+    }
+    scroll(animate(root.querySelector("[data-logo]")!, { scale: [0.7, 1], rotate: [-8, 0] }, { ease: EASE }), {
+      target: fan,
+      offset: ["start 95%", "center 55%"],
+    });
+  }
+</script>

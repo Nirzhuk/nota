@@ -1,0 +1,23 @@
+{
+  "name": "@nota/landing",
+  "private": true,
+  "license": "MIT",
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "web": "bun --bun astro dev",
+    "web:build": "bun --bun astro check && bun --bun astro build",
+    "test": "bun test src"
+  },
+  "dependencies": {
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
+    "@phosphor-icons/core": "^2.1.1",
+    "astro": "^7.4.4",
+    "motion": "^14.9.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.12",
+    "typescript": "^6"
+  }
+}

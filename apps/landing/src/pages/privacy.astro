@@ -1,0 +1,22 @@
+---
+import Base from "../layouts/base.astro";
+import Nota from "../components/nota.astro";
+import { REPO } from "../release";
+---
+<Base title="Privacy | Nota" description="What this site and the Nota app do with your data.">
+  <article class="wrap prose">
+    <a class="textlink caption-2 back" href="/">Back to the home page</a>
+    <h1 class="heading-2">Privacy</h1>
+    <h2 class="heading-5">This website</h2>
+    <p class="body-3 dim">This site sets no cookies, runs no analytics and loads nothing from other companies. The company hosting it may keep ordinary server logs. Downloads come from GitHub, which has its own privacy policy.</p>
+    <h2 class="heading-5">The <Nota /> app and extension</h2>
+    <p class="body-3 dim"><Nota /> has no account and no server of its own. The extension sends your saves to the app on your computer, which keeps them in a file on your disk. <Nota /> fetches images and thumbnails from the site they came from, and checks GitHub for new versions. Those sites see those requests the way they see any other.</p>
+    <h2 class="heading-5">Questions</h2>
+    <p class="body-3 dim">Open an issue on <a class="textlink" href={`${REPO}/issues`}>GitHub</a>. The code is public, so you can also check all of this yourself.</p>
+  </article>
+</Base>
+<style>
+  .prose { display: flex; flex-direction: column; gap: var(--s-200); max-width: 680px; padding-top: 128px; padding-bottom: var(--s-900); }
+  .prose h2 { margin-top: var(--s-200); }
+  .back { align-self: flex-start; }
+</style>

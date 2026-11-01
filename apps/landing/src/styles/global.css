@@ -1,0 +1,128 @@
+@import "@fontsource-variable/geist/index.css";
+@import "@fontsource-variable/geist-mono/index.css";
+@import "./tokens.css";
+
+* { box-sizing: border-box; margin: 0; }
+html { background: var(--side); scroll-behavior: smooth; scroll-padding-top: var(--s-800); }
+body {
+  background: var(--side);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 24px;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+h1, h2, h3, h4 { text-wrap: balance; font: inherit; }
+p, li, dd { text-wrap: pretty; }
+img, svg { display: block; }
+img { max-width: 100%; -webkit-user-drag: none; }
+button, input { font: inherit; color: inherit; }
+button { background: none; border: 0; cursor: pointer; }
+a { color: inherit; }
+ul, ol { list-style: none; padding: 0; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: var(--r-sm); }
+::selection { background: var(--saved); color: #fff; }
+
+[hidden] { display: none !important; }
+.icon { display: inline-flex; flex: none; }
+/* Every "Nota" in the copy carries the logo. Sized in em so it follows any text style. */
+.nota { white-space: nowrap; }
+.nota img { display: inline-block; width: 1.1em; height: 1.1em; margin-right: 0.15em; vertical-align: -0.2em; }
+.icon svg { width: 1em; height: 1em; }
+.dim { color: var(--dim); }
+.wrap { width: min(100%, var(--page)); margin-inline: auto; padding-inline: var(--gutter); }
+.band { padding-block: var(--s-900); }
+.head { max-width: 680px; margin-bottom: var(--s-600); }
+.head p { margin-top: var(--s-200); color: var(--dim); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+.skip {
+  position: fixed; top: var(--s-75); left: var(--s-75); z-index: 100;
+  padding: var(--s-75) var(--s-100);
+  background: var(--fg); color: var(--ink); border-radius: var(--r-lg);
+  transform: translateY(-200%);
+}
+.skip:focus { transform: none; }
+
+/* Buttons. White is the action, blue is reserved for "saved". */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--s-75);
+  padding: var(--s-75) var(--s-100);
+  border-radius: var(--r-lg);
+  background: var(--fg); color: var(--ink);
+  text-decoration: none; white-space: nowrap;
+  transition: transform var(--fade) var(--ease), background-color var(--fade) var(--ease);
+}
+.btn:hover { background: #fff; transform: translateY(-2px); }
+.btn:active { transform: scale(0.98); }
+.btn.quiet { background: var(--chip); color: var(--fg); }
+.btn.quiet:hover { background: var(--line-strong); }
+
+.textlink { color: var(--fg); text-underline-offset: 4px; text-decoration-color: var(--dim); transition: text-decoration-color var(--fade) var(--ease); }
+.textlink:hover { text-decoration-color: var(--fg); }
+
+/* Which download shows is decided by a class set in <head>, so nothing flickers. */
+.only-mac, .only-win { display: none; }
+html.os-mac .only-mac, html.os-win .only-win { display: inline-flex; }
+html.os-mac .only-other, html.os-win .only-other { display: none; }
+
+kbd {
+  display: inline-grid; place-items: center;
+  min-width: var(--s-500); height: var(--s-500);
+  padding-inline: var(--s-75);
+  background: var(--card); color: var(--fg);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg);
+  font-family: inherit; font-size: 16px; line-height: 24px; font-weight: 500;
+  box-shadow: 0 2px 0 var(--line-strong);
+}
+
+/* Scroll reveals: JS adds .in once, no replay. */
+.js .reveal { opacity: 0; transform: translateY(var(--s-400)); }
+.js .reveal.in {
+  opacity: 1; transform: none;
+  transition: opacity 700ms var(--ease) calc(var(--i, 0) * 60ms), transform 700ms var(--ease) calc(var(--i, 0) * 60ms);
+}
+
+/* The extension's "Saved to Nota" pill, values from apps/extension/shared.js. */
+.toast {
+  display: flex; align-items: center; gap: var(--s-50);
+  padding: var(--s-75) var(--s-100) var(--s-75) var(--s-75);
+  border-radius: var(--r-full);
+  background: rgba(28, 28, 30, 0.92); color: var(--fg);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18), inset 0 0 0 0.5px rgba(255, 255, 255, 0.1);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  white-space: nowrap; pointer-events: none;
+}
+.toast .icon { color: var(--ok); }
+
+/* The app's card, shared by the hero window, the wall and the story. */
+.note {
+  position: relative;
+  padding: var(--s-100);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  font-size: 12px; line-height: 16px;
+  transition: opacity var(--fade) var(--ease), transform var(--move) var(--ease), border-color var(--fade) var(--ease);
+}
+.note .meta { display: flex; align-items: center; gap: var(--s-50); margin-bottom: var(--s-50); color: var(--dim); min-width: 0; }
+.note .author { color: var(--fg); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.note h3 { font-weight: 600; margin-bottom: var(--s-50); }
+.note .tile {
+  display: grid; place-items: center;
+  aspect-ratio: 16 / 9; margin-top: var(--s-75);
+  background: #313131; color: var(--fg); border-radius: var(--r-md);
+  font-size: 24px;
+}
+.note .tile.square { aspect-ratio: 4 / 3; background: #272727; color: var(--saved); }
+.note .bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-50); margin-top: var(--s-75); color: var(--dim); }
+.note .chip { padding: 0 var(--s-50); background: var(--chip); border-radius: var(--r-sm); white-space: nowrap; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .js .reveal { transform: none; }
+  .js .reveal.in { transition: opacity var(--fade) var(--ease); }
+  *, *::before, *::after { animation: none !important; }
+}
