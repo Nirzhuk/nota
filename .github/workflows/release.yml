@@ -1,0 +1,73 @@
+# Every push to main releases Nota — once per version.
+#
+# Bump "version" in apps/desktop/src-tauri/tauri.conf.json and push: CI builds a
+# universal macOS app, publishes GitHub Release v<version> with the .dmg, the
+# signed updater bundle and latest.json. Pushes that don't change the version
+# skip the build (the tag already exists).
+#
+# Installed apps poll releases/latest/download/latest.json and show
+# "Update to vX" in the sidebar.
+#
+# Setup (once):
+#   - Secrets: TAURI_SIGNING_PRIVATE_KEY        = contents of ~/.tauri/nota-updater.key
+#              TAURI_SIGNING_PRIVATE_KEY_PASSWORD = contents of ~/.tauri/nota-updater.password
+#   - Settings -> Actions -> General -> Workflow permissions -> Read and write.
+#
+# ponytail: macOS only and not Developer ID signed/notarized; first install needs
+# right-click -> Open. Add APPLE_* secrets to tauri-action when that matters.
+
+name: release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency: release
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      exists: ${{ steps.v.outputs.exists }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: v
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v=$(jq -r .version apps/desktop/src-tauri/tauri.conf.json)
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          if gh release view "v$v" >/dev/null 2>&1; then echo "exists=true" >> "$GITHUB_OUTPUT"; else echo "exists=false" >> "$GITHUB_OUTPUT"; fi
+
+  release:
+    needs: check
+    if: needs.check.outputs.exists == 'false'
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+      - run: bun install --frozen-lockfile
+      - uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: apps/desktop
+          tauriScript: bunx tauri
+          tagName: v__VERSION__
+          releaseName: Nota v__VERSION__
+          releaseBody: See the commits since the last release.
+          releaseDraft: false
+          uploadUpdaterJson: true
+          args: --target universal-apple-darwin --bundles app,dmg --config src-tauri/tauri.release.conf.json

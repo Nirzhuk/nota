@@ -1,0 +1,52 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <img src="icons/32.png" width="16" height="16" alt="" />
+      <b>Nota</b>
+      <span id="status" class="status"><i></i><span></span></span>
+      <button id="import-btn" class="icon" title="Import" aria-label="Import" aria-haspopup="true" aria-expanded="false" aria-controls="import-pop"></button>
+      <button id="prefs-btn" class="icon" title="What Nota saves" aria-label="What Nota saves" aria-pressed="false"></button>
+    </header>
+    <section id="settings" class="panel" hidden>
+      <h2>What Nota saves</h2>
+      <div id="prefs"></div>
+      <p class="note">Save page, watched elements and imports always save.</p>
+    </section>
+    <div class="tools">
+      <button id="save" title="Save this page to Nota">Save page</button>
+      <button id="watch" title="Click an element on this page to watch it">Watch element</button>
+    </div>
+    <section id="import-pop" class="pop" aria-label="Import" hidden>
+      <h2>Import</h2>
+      <div class="row">
+        <div class="what"><b>Reddit</b><span>Upvoted + saved</span></div>
+        <button id="reddit"></button>
+      </div>
+      <div class="row">
+        <div class="what"><b>GitHub</b><span>Starred repos</span></div>
+        <button id="github"></button>
+      </div>
+      <div class="row">
+        <div class="what"><b>X</b><span id="x-sub">Bookmarks, Likes, or History</span></div>
+        <button id="x"></button>
+      </div>
+      <p id="note" class="note" hidden></p>
+    </section>
+    <section id="watching" class="panel" hidden>
+      <h2>Watching</h2>
+      <ul id="triggers"></ul>
+    </section>
+    <ul id="list"></ul>
+    <footer id="foot" hidden>
+      <span id="pending"></span>
+      <button id="sync"></button>
+    </footer>
+    <script src="shared.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

@@ -1,0 +1,53 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Nota",
+  "version": "0.1.0",
+  "identifier": "app.nota.desktop",
+  "build": {
+    "beforeDevCommand": "bun run web",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "bun run web:build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Nota",
+        "width": 1000,
+        "height": 700,
+        "minWidth": 560,
+        "minHeight": 300,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "dragDropEnabled": false,
+        "trafficLightPosition": {
+          "x": 14,
+          "y": 12
+        }
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "macOS": { "signingIdentity": "Apple Development: Joan Rafael Serrano Perez (2F8628K4XT)" },
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDk5NUIyMDFEMEU0OTVBMEMKUldRTVdra09IU0JibWNQaU40dk41REp0U0tpY2NJL2pGWnRtZk1XbUl1MmVBWkZ4QW9SNGFrM0wK",
+      "endpoints": [
+        "https://github.com/Nirzhuk/nota/releases/latest/download/latest.json"
+      ]
+    }
+  }
+}

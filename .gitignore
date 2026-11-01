@@ -1,0 +1,7 @@
+node_modules
+dist
+.turbo
+target
+.DS_Store
+*.key
+.env*

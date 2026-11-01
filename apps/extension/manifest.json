@@ -1,0 +1,122 @@
+{
+  "manifest_version": 3,
+  "name": "Nota",
+  "version": "0.1.0",
+  "description": "Save anything to Nota. X, Reddit, YouTube, GitHub, Hacker News, Bluesky, Instagram.",
+  "icons": {
+    "32": "icons/32.png",
+    "128": "icons/128.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "storage",
+    "alarms",
+    "scripting",
+    "contextMenus",
+    "activeTab"
+  ],
+  "optional_host_permissions": [
+    "*://*/*"
+  ],
+  "commands": {
+    "save-page": {
+      "suggested_key": {
+        "default": "Alt+Shift+S",
+        "mac": "Alt+Shift+S"
+      },
+      "description": "Save the current page to Nota"
+    }
+  },
+  "host_permissions": [
+    "http://127.0.0.1:4317/*",
+    "https://x.com/*",
+    "https://twitter.com/*",
+    "https://www.reddit.com/*",
+    "https://www.youtube.com/*",
+    "https://github.com/*",
+    "https://news.ycombinator.com/*",
+    "https://bsky.app/*",
+    "https://www.instagram.com/*"
+  ],
+  "action": {
+    "default_title": "Nota",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "content-hover.js"
+      ]
+    },
+    {
+      "matches": [
+        "https://x.com/*",
+        "https://twitter.com/*"
+      ],
+      "js": [
+        "shared.js",
+        "content-x.js"
+      ]
+    },
+    {
+      "matches": [
+        "https://www.reddit.com/*"
+      ],
+      "js": [
+        "shared.js",
+        "content-reddit.js"
+      ]
+    },
+    {
+      "matches": [
+        "https://www.youtube.com/*"
+      ],
+      "js": [
+        "shared.js",
+        "content-youtube.js"
+      ]
+    },
+    {
+      "matches": [
+        "https://github.com/*"
+      ],
+      "js": [
+        "shared.js",
+        "content-github.js"
+      ]
+    },
+    {
+      "matches": [
+        "https://news.ycombinator.com/*"
+      ],
+      "js": [
+        "shared.js",
+        "content-hn.js"
+      ]
+    },
+    {
+      "matches": [
+        "https://bsky.app/*"
+      ],
+      "js": [
+        "shared.js",
+        "content-bluesky.js"
+      ]
+    },
+    {
+      "matches": [
+        "https://www.instagram.com/*"
+      ],
+      "js": [
+        "shared.js",
+        "content-instagram.js"
+      ]
+    }
+  ]
+}
