@@ -129,15 +129,11 @@ push to `main`. CI builds a universal macOS `.dmg`, publishes it as release
 bump doesn't release anything. To build a signed copy locally, run
 `bun run release` in `apps/desktop`.
 
-**Extension.** Bump `version` in `apps/extension/manifest.json` and push to
-`main`. CI uploads it to the Chrome Web Store, submits it for review, and tags
-`ext-v<version>`.
+This needs the repo secrets `TAURI_SIGNING_PRIVATE_KEY` and
+`TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (from `~/.tauri/nota-updater.*`).
 
-Both need repo secrets. The desktop app needs `TAURI_SIGNING_PRIVATE_KEY` and
-`TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (from `~/.tauri/nota-updater.*`). The
-extension needs `EXTENSION_ID`, `PUBLISHER_ID`, `CWS_CLIENT_ID`,
-`CWS_CLIENT_SECRET` and `CWS_REFRESH_TOKEN`. Run
-`npx chrome-webstore-upload-keys` to get the last three.
+**Extension.** Bump `version` in `apps/extension/manifest.json`, zip
+`apps/extension`, and upload it in the Chrome Web Store developer dashboard.
 
 ## Contributing
 
