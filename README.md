@@ -1,108 +1,140 @@
-# nota
+<p align="center">
+  <img src="docs/logo.png" width="96" alt="Nota logo">
+</p>
 
-Save what you like. Find it again.
+<h1 align="center">Nota</h1>
 
-| Site | Saves when you… |
+<p align="center">
+  Unify all your likes, locally.<br>
+  <a href="https://github.com/Nirzhuk/nota/releases/latest">Download the app</a>
+</p>
+
+<p align="center">
+  <img src="docs/demo.gif" width="760" alt="Star a repo in Chrome, the Nota extension saves it, and it shows up in the Nota app">
+</p>
+
+You like a tweet, star a repo, upvote a thread, add a video to Watch later.
+A week later you want it back and can't remember where it was. Nota keeps all
+of it in one app on your computer that you can search.
+
+You don't change how you browse. Click like the way you always do and the
+Nota extension sends that post to the Nota app. Nothing goes to a server.
+
+[Watch the 13 second demo (mp4)](docs/demo.mp4)
+
+## How it works
+
+**1. Like things where you already are.** Nota saves the post the moment you click.
+
+<img src="docs/1-browser.png" width="760" alt="GitHub repo page with the Star button highlighted">
+
+| Site | Nota saves when you |
 |---|---|
-| Any page | right-click → Save … to Nota, or press ⌥⇧S |
 | X | like, bookmark |
 | Reddit | upvote |
-| YouTube | like, add to Watch later / any playlist |
+| YouTube | like, add to Watch later or any playlist |
 | GitHub | star |
-| Hacker News | upvote, favorite (stories) |
+| Hacker News | upvote, favorite a story |
 | Bluesky | like, bookmark |
 | Instagram | save |
 
-Keywords from watched elements and import sources become tags. Tags are
-collections: click one in the sidebar to filter, or see it on a card.
+**2. Or save any page by hand.** Use the toolbar button, the right-click menu,
+or <kbd>⌥</kbd><kbd>⇧</kbd><kbd>S</kbd>.
 
-```
-apps/extension   Chrome MV3, no build step: content-<site>.js -> POST to app
-apps/desktop     Tauri app: listens on 127.0.0.1:4317, shows a searchable grid
-```
+<img src="docs/2-extension.png" width="760" alt="The Nota popup open over a GitHub page, listing recent saves">
 
-## Run
+**3. It goes straight to the app.** If the app is closed, the extension holds
+on to your saves and sends them the next time Nota opens. The toolbar badge
+shows how many are waiting.
 
-1. `bun install`
-2. `bun dev` (starts the Tauri app)
-3. Chrome → `chrome://extensions` → Developer mode → Load unpacked → `apps/extension`
-4. Like a tweet. It appears in Nota.
+<img src="docs/3-sync.png" width="760" alt="A browser window with an arrow pointing to the Nota app">
 
-App closed? The extension queues saves (badge shows count) and sends them when
-Nota is open.
+**4. Find it again.** Search everything, filter by site, sort things into
+folders and tags.
 
-Notes live in `~/Library/Application Support/app.nota.desktop/notes.json`.
+<img src="docs/4-app.png" width="760" alt="The Nota app showing a grid of saved posts">
 
 ## Save anything
 
-- Right-click a page, link, image, or selected text → **Save … to Nota**.
-- **⌥⇧S** saves the current page. The toolbar popup also has **Save page**.
-- The extension reads the page's own preview info (`og:` title, description,
-  image), so no per-site setup is needed.
+Right-click a page, link, image or selected text and pick **Save … to Nota**.
+<kbd>⌥</kbd><kbd>⇧</kbd><kbd>S</kbd> saves the current page. Nota reads the
+page's own preview info (the `og:` title, description and image), so any site
+works without setup.
 
-## Watch an element
+## Watch any button
 
-1. Open the popup on any page → **Watch element**.
-2. Click the button you want watched (a YouTube like, a GitHub star, anything).
-3. Name the keyword, e.g. `like`, `star`, `read later`.
+Want Nota to save when you click something it doesn't know about? Teach it.
 
-From then on, clicking that element saves the page/post with that keyword as a
-tag. The first time you watch a site, Chrome asks for permission for that site
-only. The popup's **Watching** list shows the tag, the site, and when each
-trigger last fired ("3d ago", or **never fired** — useful when a site renames
-its buttons).
+1. Open the popup on that site and click **Watch element**.
+2. Click the button you care about, like a YouTube like or a "Read later" link.
+3. Give it a name, like `read later`. That name becomes the tag.
 
-Watched elements always save, even when automatic capture is turned off in the
-popup's settings (gear icon → **What Nota saves**).
+From then on, clicking that button saves the page with that tag. Chrome asks
+for permission once per site. The popup's **Watching** list shows when each
+one last fired. If one says **never fired**, the site probably renamed its
+button.
 
-## Import
+Watched buttons always save, even if you turned off automatic saving for that
+site (gear icon, then **What Nota saves**).
 
-**Reddit** — popup → **Import**. While signed in to reddit.com, the extension
-reads the account's own JSON for upvoted and saved posts (Reddit caps each list
-at 1000). Images and outbound links come along. Tags: `#reddit-upvoted`,
-`#reddit-saved`.
+## Bring in what you already have
 
-**X** — open `x.com/i/bookmarks`, your Likes tab (`x.com/<you>/likes`), or
-`x.com/i/history`, then popup → **Import**. The extension scrolls the list and
-saves every post it passes, with images and links. Tags: `#x-bookmarks`,
-`#x-likes`. Esc or clicking the progress pill stops it; it also stops when the
-list stops growing.
+**Reddit.** Sign in to reddit.com, open the popup, click **Import**. You get
+your upvoted and saved posts with images and links. Reddit only returns the
+last 1000 of each. Tags are `#reddit-upvoted` and `#reddit-saved`.
 
-**X archive** — download your data from X and open Nota's header **Import**
-button (download icon), then choose `data/like.js`. This gets every like ever,
-text and link only (the archive has no images or bookmarks). Tag: `#x-archive`.
-It merges with live saves of the same post.
+**X.** Open your bookmarks (`x.com/i/bookmarks`), your Likes tab, or
+`x.com/i/history`, then click **Import** in the popup. The extension scrolls
+the list and saves each post it passes. Press Esc or click the progress pill to
+stop. Tags are `#x-bookmarks` and `#x-likes`.
 
-## App
+**X archive.** This gets every like you ever made. Download your data from X,
+click the download icon in the Nota app, and pick `data/like.js`. The archive
+has text and links only, no images or bookmarks. Tag is `#x-archive`. If you
+also saved the same post live, Nota merges the two.
 
-- Sidebar: sources, folders, and tags. Drag a card by its top row into a folder.
-  Double-click a folder to rename; right-click to rename/delete.
-- `/` or `⌘F` search. Every word must match; tags are searchable.
-- ⌘2…⌘9 filter by source; ⌘= / ⌘− resize cards; ⌃⌘S toggles the sidebar.
+## Using the app
 
-## Release
+- Drag a card by its top row onto a folder. Double-click a folder to rename it,
+  right-click to rename or delete.
+- <kbd>/</kbd> or <kbd>⌘</kbd><kbd>F</kbd> searches. Every word has to match,
+  and tags count.
+- <kbd>⌘</kbd><kbd>2</kbd> to <kbd>⌘</kbd><kbd>9</kbd> filter by site,
+  <kbd>⌘</kbd><kbd>=</kbd> and <kbd>⌘</kbd><kbd>−</kbd> resize cards,
+  <kbd>⌃</kbd><kbd>⌘</kbd><kbd>S</kbd> hides the sidebar.
+- When a new version is out, an **Update** button appears at the bottom of the
+  sidebar.
 
-Bump `version` in `apps/desktop/src-tauri/tauri.conf.json`, push to `main`.
-CI (`.github/workflows/release.yml`) publishes GitHub Release `v<version>` with
-a universal macOS `.dmg` and `latest.json`. Installed copies show
-**Update to v…** in the sidebar footer. Pushes without a version bump don't release.
+Your notes are one JSON file:
+`~/Library/Application Support/app.nota.desktop/notes.json`.
 
-One-time setup on GitHub:
-- Secrets `TAURI_SIGNING_PRIVATE_KEY` (= `~/.tauri/nota-updater.key`) and
-  `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (= `~/.tauri/nota-updater.password`).
-- Settings → Actions → General → Workflow permissions → Read and write.
+## Development
 
-Local signed build: `cd apps/desktop && bun run release`.
+```
+apps/extension   Chrome extension (MV3), no build step
+apps/desktop     Tauri app, listens on 127.0.0.1:4317
+```
 
-## Extension release
+1. `bun install`
+2. `bun dev` starts the desktop app.
+3. In Chrome, open `chrome://extensions`, turn on Developer mode, click
+   **Load unpacked** and pick `apps/extension`.
+4. Like a tweet. It shows up in Nota.
 
-Bump `version` in `apps/extension/manifest.json`, push to `main`. CI
-(`.github/workflows/extension.yml`) uploads to the Chrome Web Store, submits
-for review, and tags `ext-v<version>`.
+## Releasing
 
-One-time setup (the first version is submitted by hand in the dashboard):
-1. `npx chrome-webstore-upload-keys` and follow its steps (Google Cloud project,
-   Chrome Web Store API, OAuth client). It prints client ID, secret and refresh token.
-2. GitHub repo secrets: `EXTENSION_ID` (32-letter item ID from the dashboard),
-   `PUBLISHER_ID` (from the dashboard URL), `CWS_CLIENT_ID`, `CWS_CLIENT_SECRET`,
-   `CWS_REFRESH_TOKEN`.
+**Desktop app.** Bump `version` in `apps/desktop/src-tauri/tauri.conf.json` and
+push to `main`. CI builds a universal macOS `.dmg`, publishes it as release
+`v<version>`, and installed copies offer the update. A push without a version
+bump doesn't release anything. To build a signed copy locally, run
+`bun run release` in `apps/desktop`.
+
+**Extension.** Bump `version` in `apps/extension/manifest.json` and push to
+`main`. CI uploads it to the Chrome Web Store, submits it for review, and tags
+`ext-v<version>`.
+
+Both need repo secrets. The desktop app needs `TAURI_SIGNING_PRIVATE_KEY` and
+`TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (from `~/.tauri/nota-updater.*`). The
+extension needs `EXTENSION_ID`, `PUBLISHER_ID`, `CWS_CLIENT_ID`,
+`CWS_CLIENT_SECRET` and `CWS_REFRESH_TOKEN`. Run
+`npx chrome-webstore-upload-keys` to get the last three.
