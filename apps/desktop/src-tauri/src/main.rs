@@ -453,21 +453,38 @@ mod og_test {
     }
 }
 
+// macOS only: Windows has no menu bar, and its menus reject the Cmd key used below.
+// app.tsx handles the same shortcuts there.
 fn menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
     let item = |id: &str, label: &str, key: &str| MenuItemBuilder::with_id(id, label).accelerator(key).build(app);
-    let nota = SubmenuBuilder::new(app, if MAC { "Nota" } else { "File" })
+    let nota = SubmenuBuilder::new(app, "Nota")
         .about(Some(AboutMetadata::default()))
         .separator()
         .item(&item("settings", "Settings…", "CmdOrCtrl+,")?)
         .separator()
-        .item(&item("reveal", if MAC { "Show Notes in Finder" } else { "Show Notes in Explorer" }, "CmdOrCtrl+Shift+O")?)
-        .separator();
-    let nota = if MAC { nota.services().separator().hide().hide_others().show_all().separator() } else { nota };
-    let nota = nota.quit().build()?;
+        .item(&item("reveal", "Show Notes in Finder", "CmdOrCtrl+Shift+O")?)
+        .separator()
+        .services()
+        .separator()
+        .hide()
+        .hide_others()
+        .show_all()
+        .separator()
+        .quit()
+        .build()?;
+    // Edit is required on macOS or copy/paste won't work in the search field.
+    let edit = SubmenuBuilder::new(app, "Edit")
+        .undo()
+        .redo()
+        .separator()
+        .cut()
+        .copy()
+        .paste()
+        .select_all()
+        .build()?;
     let view = SubmenuBuilder::new(app, "View")
         .item(&item("search", "Search", "CmdOrCtrl+F")?)
-        // Windows menus reject the Cmd/Win modifier, and that error stops the app at startup.
-        .item(&item("sidebar", "Toggle Sidebar", if MAC { "Ctrl+Cmd+S" } else { "Ctrl+Shift+S" })?)
+        .item(&item("sidebar", "Toggle Sidebar", "Ctrl+Cmd+S")?)
         .separator()
         .item(&item("filter:all", "All", "CmdOrCtrl+1")?)
         .item(&item("filter:x", "X", "CmdOrCtrl+2")?)
@@ -480,23 +497,17 @@ fn menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         .item(&item("filter:web", "Web", "CmdOrCtrl+9")?)
         .separator()
         .item(&item("bigger", "Bigger Cards", "CmdOrCtrl+=")?)
-        .item(&item("smaller", "Smaller Cards", "CmdOrCtrl+-")?);
-    // muda does nothing for the predefined fullscreen item on Windows.
-    let view = if MAC { view.separator().fullscreen() } else { view }.build()?;
+        .item(&item("smaller", "Smaller Cards", "CmdOrCtrl+-")?)
+        .separator()
+        .fullscreen()
+        .build()?;
     let window = SubmenuBuilder::new(app, "Window")
         .minimize()
         .maximize()
         .separator()
         .close_window()
         .build()?;
-    let bar = MenuBuilder::new(app).item(&nota);
-    // Edit is required on macOS or copy/paste won't work in the search field. WebView2 handles them itself.
-    let bar = if MAC {
-        bar.item(&SubmenuBuilder::new(app, "Edit").undo().redo().separator().cut().copy().paste().select_all().build()?)
-    } else {
-        bar
-    };
-    bar.item(&view).item(&window).build()
+    MenuBuilder::new(app).item(&nota).item(&edit).item(&view).item(&window).build()
 }
 
 fn show_search(app: &AppHandle) {
@@ -573,12 +584,13 @@ fn main() {
         eprintln!("{info}");
         let _ = fs::write(std::env::temp_dir().join("nota-crash.log"), info.to_string());
     }));
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    let builder = if MAC { builder.menu(menu) } else { builder };
+    builder
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
-        .menu(menu)
         .on_menu_event(|app, e| match e.id().as_ref() {
             "reveal" => reveal_notes(app.clone()),
             // search / filter:* are handled by the frontend

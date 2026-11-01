@@ -5,10 +5,11 @@ import { DownloadSimple, MagnifyingGlass, Shuffle, X, SidebarSimple, SquaresFour
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Card, Player } from "./card";
 import { MAC, withMod } from "./platform";
+import { WindowControls } from "./window-controls";
 import { Sidebar } from "./sidebar";
 import { Settings } from "./settings";
 import { parseLikeArchive } from "./archive";
-import { linksOf, type Note, type Source, type View } from "./notes";
+import { SITES, linksOf, type Note, type Source, type View } from "./notes";
 
 const SIZE = { min: 160, max: 480, step: 40, initial: 240 };
 const clampSize = (n: number) => Math.min(SIZE.max, Math.max(SIZE.min, n));
@@ -39,6 +40,20 @@ const hayOf = (n: Note) => {
   }
   return hay;
 };
+
+// Windows has no menu bar, so the View and File shortcuts from main.rs live here.
+function ctrlAction(e: KeyboardEvent) {
+  const key = e.key.toLowerCase();
+  if (e.shiftKey && key === "s") return "sidebar";
+  if (e.shiftKey && key === "o") return "reveal";
+  if (key === "f") return "search";
+  if (key === ",") return "settings";
+  if (key === "=" || key === "+") return "bigger";
+  if (key === "-") return "smaller";
+  const digit = Number(e.code.match(/^Digit([1-9])$/)?.[1]);
+  if (digit === 1) return "filter:all";
+  return digit ? `filter:${Object.keys(SITES)[digit - 2]}` : undefined;
+}
 
 export default function App() {
   const [notes, setNotes] = useState<Note[]>([]);
@@ -85,25 +100,31 @@ export default function App() {
     invoke<string[]>("list_folders").then(setFolders);
     const offNotes = listen("notes-changed", load);
     const offToast = listen<string>("toast", ({ payload }) => finishImport(payload));
-    const offMenu = listen<string>("menu", ({ payload }) => {
+    const run = (payload: string) => {
       if (payload === "search") {
         setView((v) => (v === "settings" ? "all" : v)); // search lives in the grid header
-        requestAnimationFrame(() => search.current?.select());
+        requestAnimationFrame(() => {
+          search.current?.focus();
+          search.current?.select();
+        });
       } else if (payload === "settings") setView("settings");
       else if (payload === "bigger") setSize((n) => clampSize(n + SIZE.step));
       else if (payload === "smaller") setSize((n) => clampSize(n - SIZE.step));
       else if (payload === "sidebar") setSidebar((s) => !s);
       else if (payload === "filter:all") setView("all");
       else if (payload.startsWith("filter:")) setView(`src:${payload.slice(7) as Source}`);
-    });
+      else if (payload === "reveal") invoke("reveal_notes");
+    };
+    const offMenu = listen<string>("menu", ({ payload }) => run(payload));
     const key = (e: KeyboardEvent) => {
       const el = document.activeElement;
       const typing =
         el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || (el as HTMLElement | null)?.isContentEditable;
-      // WebView2 treats these as browser shortcuts (find bar, print, reload). altKey: AltGr reports as Ctrl+Alt.
-      if (!MAC && !e.altKey && ((e.ctrlKey && "fgpru".includes(e.key.toLowerCase())) || e.key === "F3" || e.key === "F5")) {
-        e.preventDefault();
-        if (e.ctrlKey && e.key.toLowerCase() === "f") search.current?.focus();
+      // altKey: AltGr reports as Ctrl+Alt. preventDefault also stops WebView2's find bar, print and reload.
+      if (!MAC && !e.altKey) {
+        const action = e.ctrlKey ? ctrlAction(e) : undefined;
+        if (action) run(action);
+        if (action || (e.ctrlKey && "gprus".includes(e.key.toLowerCase())) || e.key === "F3" || e.key === "F5") e.preventDefault();
       }
       if (e.key === "/" && !typing && search.current) {
         e.preventDefault();
@@ -363,6 +384,7 @@ export default function App() {
 
   return (
     <div className={sidebar ? "app" : "app nosidebar"}>
+      {!MAC && <WindowControls />}
       {/* stays mounted so it can slide; inert = out of tab order / screen readers when closed */}
       <div className="side" inert={!sidebar}>
         <Sidebar
