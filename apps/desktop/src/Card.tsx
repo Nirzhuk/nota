@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Menu } from "@tauri-apps/api/menu";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { ArrowSquareOut, Check, Copy, FolderSimple, FolderSimplePlus, LinkSimple, Play, X } from "@phosphor-icons/react";
-import { SITES, ago, isLong, linksOf, type Note } from "./notes";
+import { SITES, ago, linksOf, type Note } from "./notes";
 
 type Props = {
   n: Note;
@@ -23,6 +23,27 @@ export function Card({ n, folders, isNew, expanded, selected, onToggle, onPlay, 
   const [copied, setCopied] = useState(false);
   const [editing, setEditing] = useState(false);
   const Glyph = SITES[n.source]?.icon ?? LinkSimple;
+  const textRef = useRef<HTMLParagraphElement>(null);
+  const [full, setFull] = useState(0); // real text height in px
+  const [preview, setPreview] = useState(Infinity); // 10-line preview height in px
+  const long = full > preview;
+
+  // Measure the real text height (not a char count), and again when the card width changes.
+  useLayoutEffect(() => {
+    const el = textRef.current;
+    if (!el) return setFull(0);
+    const measure = () => {
+      setFull(el.scrollHeight);
+      setPreview(parseFloat(getComputedStyle(el).lineHeight) * 10 + 2);
+    };
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [n.text]);
+  // Expanding animates max-height to the measured height; collapsing animates back to 10 lines.
+  const expand = () => {
+    if (window.getSelection()?.isCollapsed !== false) onToggle(n.id); // not while selecting text
+  };
 
   const copy = async () => {
     await navigator.clipboard.writeText(n.url);
@@ -82,8 +103,17 @@ export function Card({ n, folders, isNew, expanded, selected, onToggle, onPlay, 
       </button>
 
       {n.title && <h3>{n.title}</h3>}
-      {n.text && <p className={expanded ? "full" : ""}>{n.text}</p>}
-      {isLong(n.text) && (
+      {n.text && (
+        <p
+          ref={textRef}
+          className={long ? (expanded ? "text open" : "text clamp") : "text"}
+          style={long && expanded ? { maxHeight: full } : undefined}
+          onClick={long && !expanded ? expand : undefined}
+        >
+          {n.text}
+        </p>
+      )}
+      {long && (
         <button className="more" aria-expanded={expanded} onClick={() => onToggle(n.id)}>
           {expanded ? "Show less" : "Show more"}
         </button>

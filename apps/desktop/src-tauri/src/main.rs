@@ -20,6 +20,8 @@ struct Store {
     notes: Mutex<Vec<Value>>,
     folders_path: PathBuf,
     folders: Mutex<Vec<String>>,
+    settings_path: PathBuf,
+    settings: Mutex<serde_json::Map<String, Value>>, // sound, hoverKey, theme (see settings.tsx)
 }
 
 // write to tmp + rename so a crash mid-write never corrupts the file
@@ -40,7 +42,10 @@ impl Store {
     fn load(dir: PathBuf) -> Self {
         let path = dir.join("notes.json");
         let folders_path = dir.join("folders.json");
+        let settings_path = dir.join("settings.json");
         Store {
+            settings: Mutex::new(read_json(&settings_path)),
+            settings_path,
             notes: Mutex::new(read_json(&path)),
             folders: Mutex::new(read_json(&folders_path)),
             path,
@@ -211,6 +216,42 @@ fn rename_folder(store: State<Store>, from: String, to: Option<String>) -> Resul
 }
 
 #[tauri::command]
+fn get_settings(store: State<Store>) -> serde_json::Map<String, Value> {
+    store.settings.lock().unwrap().clone()
+}
+
+#[tauri::command]
+fn set_settings(app: AppHandle, store: State<Store>, patch: serde_json::Map<String, Value>) -> Result<(), String> {
+    let mut s = store.settings.lock().unwrap();
+    s.extend(patch);
+    write_json(&store.settings_path, &*s).map_err(|e| e.to_string())?;
+    drop(s);
+    apply_theme(&app);
+    Ok(())
+}
+
+pub(crate) fn setting(app: &AppHandle, key: &str) -> Value {
+    app.state::<Store>().settings.lock().unwrap().get(key).cloned().unwrap_or(Value::Null)
+}
+
+// The webview follows the window's appearance, so CSS prefers-color-scheme just works.
+fn apply_theme(app: &AppHandle) {
+    let theme = match setting(app, "theme").as_str() {
+        Some("light") => Some(tauri::Theme::Light),
+        Some("dark") => Some(tauri::Theme::Dark),
+        _ => None,
+    };
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.set_theme(theme);
+    }
+}
+
+#[tauri::command]
+fn reveal_notes(app: AppHandle) {
+    let _ = app.opener().reveal_item_in_dir(&app.state::<Store>().path);
+}
+
+#[tauri::command]
 fn delete_note(store: State<Store>, id: String) -> Result<(), String> {
     let mut notes = store.notes.lock().unwrap();
     notes.retain(|n| n["id"] != id.as_str());
@@ -359,6 +400,8 @@ fn menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
     let nota = SubmenuBuilder::new(app, "Nota")
         .about(Some(AboutMetadata::default()))
         .separator()
+        .item(&item("settings", "Settings…", "CmdOrCtrl+,")?)
+        .separator()
         .item(&item("reveal", "Show Notes in Finder", "CmdOrCtrl+Shift+O")?)
         .separator()
         .services()
@@ -491,6 +534,7 @@ fn main() {
             let dir = app.path().app_data_dir()?;
             fs::create_dir_all(&dir)?;
             app.manage(Store::load(dir));
+            apply_theme(app.handle());
             global_shortcuts(app.handle());
             let handle = app.handle().clone();
             std::thread::spawn(move || listen(handle));
@@ -503,7 +547,10 @@ fn main() {
             import_notes,
             list_folders,
             set_folders,
-            rename_folder
+            rename_folder,
+            get_settings,
+            set_settings,
+            reveal_notes
         ])
         .run(tauri::generate_context!())
         .expect("error while running nota");

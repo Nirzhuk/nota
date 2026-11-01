@@ -3,8 +3,9 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { DownloadSimple, MagnifyingGlass, Shuffle, X, SidebarSimple, SquaresFour } from "@phosphor-icons/react";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { Card, Player } from "./Card";
-import { Sidebar } from "./Sidebar";
+import { Card, Player } from "./card";
+import { Sidebar } from "./sidebar";
+import { Settings } from "./settings";
 import { parseLikeArchive } from "./archive";
 import { linksOf, type Note, type Source, type View } from "./notes";
 
@@ -63,7 +64,10 @@ export default function App() {
     const offNotes = listen("notes-changed", load);
     const offToast = listen<string>("toast", ({ payload }) => finishImport(payload));
     const offMenu = listen<string>("menu", ({ payload }) => {
-      if (payload === "search") search.current?.select();
+      if (payload === "search") {
+        setView((v) => (v === "settings" ? "all" : v)); // search lives in the grid header
+        requestAnimationFrame(() => search.current?.select());
+      } else if (payload === "settings") setView("settings");
       else if (payload === "bigger") setSize((n) => clampSize(n + SIZE.step));
       else if (payload === "smaller") setSize((n) => clampSize(n - SIZE.step));
       else if (payload === "sidebar") setSidebar((s) => !s);
@@ -74,9 +78,9 @@ export default function App() {
       const el = document.activeElement;
       const typing =
         el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || (el as HTMLElement | null)?.isContentEditable;
-      if (e.key === "/" && !typing) {
+      if (e.key === "/" && !typing && search.current) {
         e.preventDefault();
-        search.current?.focus();
+        search.current.focus();
       }
       if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
       const { ids, sel } = nav.current;
@@ -358,6 +362,7 @@ export default function App() {
           >
             <SidebarSimple size={14} />
           </button>
+          {view !== "settings" && (<>
           <label className="search">
             <MagnifyingGlass size={12} />
             <input
@@ -415,11 +420,14 @@ export default function App() {
           <span className="count" role="status" aria-label={`${shown.length} notes`}>
             {shown.length}
           </span>
+          </>)}
         </header>
 
         {/* only this scrolls, so the elastic bounce never drags the header */}
         <div className="scroll">
-        {shown.length === 0 ? (
+        {view === "settings" ? (
+          <Settings />
+        ) : shown.length === 0 ? (
           <p className="empty">
             {notes.length
               ? view.startsWith("folder:") && !q

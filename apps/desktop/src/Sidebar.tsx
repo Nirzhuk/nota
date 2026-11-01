@@ -3,7 +3,7 @@ import { Menu } from "@tauri-apps/api/menu";
 import { getVersion } from "@tauri-apps/api/app";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
-import { ArrowCircleUp, FolderSimple, FolderSimplePlus, Hash, Plus, Tray } from "@phosphor-icons/react";
+import { ArrowCircleUp, FolderSimple, GearSix, FolderSimplePlus, Hash, Plus, Tray } from "@phosphor-icons/react";
 import { SITES, type Note, type Source, type View } from "./notes";
 
 type Props = {
@@ -149,13 +149,24 @@ export function Sidebar({ notes, folders, tags, view, dragging, setView, onAdd, 
           </div>
         </>
       )}
-      <Version />
+      <Version>
+        {/* icon only; aria-label keeps the name for screen readers */}
+        <button
+          className={view === "settings" ? "toggle on" : "toggle"}
+          title="Settings  ⌘,"
+          aria-label="Settings"
+          aria-current={view === "settings" ? "page" : undefined}
+          onClick={() => setView("settings")}
+        >
+          <GearSix size={15} />
+        </button>
+      </Version>
     </aside>
   );
 }
 
 // Footer: current version; when a newer signed release exists, a button that installs it and relaunches.
-function Version() {
+function Version({ children }: { children: ReactNode }) {
   const [version, setVersion] = useState("");
   const [update, setUpdate] = useState<Update | null>(null);
   const [busy, setBusy] = useState(false);
@@ -175,13 +186,16 @@ function Version() {
   };
   return (
     <div className="version">
-      <span>v{version}</span>
       {update && (
         <button onClick={install} disabled={busy} title={`Update to v${update.version}`}>
           <ArrowCircleUp size={13} />
           {busy ? "Updating…" : `Update to v${update.version}`}
         </button>
       )}
+      <div className="version-row">
+        <span>v{version}</span>
+        {children}
+      </div>
     </div>
   );
 }

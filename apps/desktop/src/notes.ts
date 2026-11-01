@@ -39,7 +39,7 @@ export type Note = {
   savedAt: number;
 };
 
-export type View = "all" | `src:${Source}` | `folder:${string}` | `tag:${string}`;
+export type View = "all" | "settings" | `src:${Source}` | `folder:${string}` | `tag:${string}`;
 
 const URL_RE = /https?:\/\/[^\s<>"')\]]+/g;
 
@@ -47,8 +47,6 @@ const URL_RE = /https?:\/\/[^\s<>"')\]]+/g;
 export const linksOf = (n: Note): Link[] =>
   n.links ?? (n.text?.match(URL_RE) ?? []).map((url) => ({ url, label: url.replace(/^https?:\/\/(www\.)?/, "") }));
 
-// matches the 10-line clamp in CSS closely enough to decide when to offer "Show more"
-export const isLong = (t?: string) => !!t && (t.length > 360 || t.split("\n").length > 10);
 
 export const ago = (t: number) => {
   const s = (Date.now() - t) / 1000;

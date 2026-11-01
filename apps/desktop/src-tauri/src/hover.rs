@@ -1,4 +1,4 @@
-// Double-tap Shift in any app: save the link under the pointer (Discord, Slack, Notes, Safari, …).
+// Double-tap Shift (or the key picked in Settings) in any app: save the link under the pointer (Discord, Slack, Notes, Safari, …).
 // The link is read through the macOS Accessibility API, so Nota needs Accessibility access.
 // Chromium browsers are skipped: the extension handles those and builds richer notes (X posts etc.).
 use core_foundation::base::{CFType, CFTypeRef, TCFType};
@@ -46,7 +46,6 @@ extern "C" {
 pub fn watch(app: AppHandle) {
     const HID: i32 = 1;
     const KEY_DOWN: u32 = 10;
-    const SHIFT: u64 = 0x2_0000;
     const MODS: u64 = 0x1E_0000; // shift | ctrl | option | cmd (ignores caps lock, fn)
     const WINDOW: Duration = Duration::from_millis(400); // tune: max gap between the two presses
     std::thread::spawn(move || {
@@ -57,7 +56,14 @@ pub fn watch(app: AppHandle) {
             if flags == prev {
                 continue;
             }
-            if flags == SHIFT && prev == 0 {
+            let key = match crate::setting(&app, "hoverKey").as_str() {
+                Some("off") => 0,
+                Some("control") => 0x4_0000,
+                Some("option") => 0x8_0000,
+                Some("command") => 0x10_0000,
+                _ => 0x2_0000, // shift
+            };
+            if key != 0 && flags == key && prev == 0 {
                 // a letter typed between the taps ("Hi There") means typing, not a double tap
                 let since_key = unsafe { CGEventSourceSecondsSinceLastEventType(HID, KEY_DOWN) };
                 match first {
@@ -68,7 +74,7 @@ pub fn watch(app: AppHandle) {
                     _ => first = Some(Instant::now()),
                 }
             } else if flags != 0 {
-                first = None; // another modifier joined in: not a plain Shift tap
+                first = None; // another modifier joined in: not a plain single-key tap
             }
             prev = flags;
         }
@@ -112,7 +118,9 @@ fn save_hovered(app: &AppHandle) {
     }
     let Some((url, title)) = found else { return }; // nothing under the pointer: stay quiet
     if crate::save_link(app, &url, &title, &[]) {
-        play_save_sound();
+        if crate::setting(app, "sound").as_bool().unwrap_or(true) {
+            play_save_sound();
+        }
         let _ = app.emit("toast", "Saved link to Nota");
     } else {
         let _ = app.emit("toast", "Couldn't save link");
