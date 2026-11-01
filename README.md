@@ -39,7 +39,7 @@ Nota extension sends that post to the Nota app. Nothing goes to a server.
 | Instagram | save |
 
 **2. Or save any page by hand.** Use the toolbar button, the right-click menu,
-or <kbd>⌥</kbd><kbd>⇧</kbd><kbd>S</kbd>.
+or <kbd>⌥</kbd><kbd>⇧</kbd><kbd>S</kbd> (<kbd>Alt</kbd><kbd>Shift</kbd><kbd>S</kbd> on Windows).
 
 <img src="docs/2-extension.png" width="760" alt="The Nota popup open over a GitHub page, listing recent saves">
 
@@ -79,6 +79,9 @@ site (gear icon, then **What Nota saves**).
 
 ## Bring in what you already have
 
+Importing again is safe: posts you already have merge into one card, and posts
+you removed stay removed unless you save them again yourself.
+
 **Reddit.** Sign in to reddit.com, open the popup, click **Import**. You get
 your upvoted and saved posts with images and links. Reddit only returns the
 last 1000 of each. Tags are `#reddit-upvoted` and `#reddit-saved`.
@@ -102,11 +105,15 @@ also saved the same post live, Nota merges the two.
 - <kbd>⌘</kbd><kbd>2</kbd> to <kbd>⌘</kbd><kbd>9</kbd> filter by site,
   <kbd>⌘</kbd><kbd>=</kbd> and <kbd>⌘</kbd><kbd>−</kbd> resize cards,
   <kbd>⌃</kbd><kbd>⌘</kbd><kbd>S</kbd> hides the sidebar.
+- On Windows, use <kbd>Ctrl</kbd> for <kbd>⌘</kbd>, and
+  <kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>S</kbd> hides the sidebar. Settings lists
+  every shortcut for your system.
 - When a new version is out, an **Update** button appears at the bottom of the
   sidebar.
 
 Your notes are one JSON file:
-`~/Library/Application Support/app.nota.desktop/notes.json`.
+`~/Library/Application Support/app.nota.desktop/notes.json` on macOS,
+`%APPDATA%\app.nota.desktop\notes.json` on Windows.
 
 ## Development
 

@@ -1,10 +1,11 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Menu } from "@tauri-apps/api/menu";
 import { getVersion } from "@tauri-apps/api/app";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { ArrowCircleUp, FolderSimple, GearSix, FolderSimplePlus, Hash, Plus, Tray } from "@phosphor-icons/react";
 import { SITES, type Note, type Source, type View } from "./notes";
+import { withMod } from "./platform";
 
 type Props = {
   notes: Note[];
@@ -23,9 +24,16 @@ const NEW = "\0new"; // drop-target id for "New folder"
 export function Sidebar({ notes, folders, tags, view, dragging, setView, onAdd, onRename, onMove }: Props) {
   const [editing, setEditing] = useState<string | null>(null); // folder being renamed, "" = new folder
   const [over, setOver] = useState<string | null>(null); // drop target under a dragged card
-  const sources = (Object.keys(SITES) as Source[]).filter(
-    (s) => s === (view.startsWith("src:") ? (view.slice(4) as Source) : null) || notes.some((n) => n.source === s),
-  );
+  const counts = useMemo(() => {
+    const m = new Map<string, number>();
+    const add = (key: string) => m.set(key, (m.get(key) ?? 0) + 1);
+    for (const n of notes) {
+      add(`src:${n.source}`);
+      if (n.folder) add(`folder:${n.folder}`);
+    }
+    return m;
+  }, [notes]);
+  const sources = (Object.keys(SITES) as Source[]).filter((s) => view === `src:${s}` || counts.has(`src:${s}`));
 
   const folderMenu = async (e: React.MouseEvent, f: string) => {
     e.preventDefault();
@@ -75,7 +83,7 @@ export function Sidebar({ notes, folders, tags, view, dragging, setView, onAdd, 
               key={s}
               icon={<Glyph size={14} />}
               label={SITES[s].label}
-              n={notes.filter((n) => n.source === s).length}
+              n={counts.get(`src:${s}`) ?? 0}
               on={view === `src:${s}`}
               onClick={() => setView(`src:${s}`)}
             />
@@ -106,7 +114,7 @@ export function Sidebar({ notes, folders, tags, view, dragging, setView, onAdd, 
                 key={f}
                 icon={<FolderSimple size={14} />}
                 label={f}
-                n={notes.filter((n) => n.folder === f).length}
+                n={counts.get(`folder:${f}`) ?? 0}
                 on={view === `folder:${f}`}
                 onClick={() => setView(`folder:${f}`)}
                 onDoubleClick={() => setEditing(f)}
@@ -153,7 +161,7 @@ export function Sidebar({ notes, folders, tags, view, dragging, setView, onAdd, 
         {/* icon only; aria-label keeps the name for screen readers */}
         <button
           className={view === "settings" ? "toggle on" : "toggle"}
-          title="Settings  ⌘,"
+          title={`Settings  ${withMod(",")}`}
           aria-label="Settings"
           aria-current={view === "settings" ? "page" : undefined}
           onClick={() => setView("settings")}

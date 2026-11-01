@@ -83,6 +83,10 @@ aside {
   overflow-y: auto;
 }
 .traffic { flex: none; height: 44px; } /* macOS traffic lights + drag area */
+/* Elsewhere: a native title bar, so no traffic lights to clear, and wide classic scrollbars. */
+html:not(.mac) .traffic { height: 8px; }
+html:not(.mac) .app.nosidebar header { padding-left: 12px; }
+html:not(.mac) * { scrollbar-width: thin; }
 .group { display: flex; flex-direction: column; gap: 1px; }
 .item {
   display: flex;

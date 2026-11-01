@@ -74,6 +74,19 @@ jobs:
         with:
           workspaces: apps/desktop/src-tauri
       - run: bun install --frozen-lockfile
+      # A startup failure on Windows is silent, so prove the app stays up before publishing.
+      - if: runner.os == 'Windows'
+        working-directory: apps/desktop
+        shell: pwsh
+        run: |
+          bunx tauri build --no-bundle
+          $app = Start-Process src-tauri/target/release/nota.exe -PassThru
+          Start-Sleep 15
+          if ($app.HasExited) {
+            Get-Content "$env:TEMP/nota-crash.log" -ErrorAction SilentlyContinue
+            throw "Nota exited at startup"
+          }
+          $app.Kill()
       - uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

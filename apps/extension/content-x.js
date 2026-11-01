@@ -23,7 +23,7 @@ chrome.runtime.onMessage.addListener((msg) => {
     () =>
       [...document.querySelectorAll('article[data-testid="tweet"]')].map((article) => {
         const note = parse(article);
-        return note && { ...note, tags: notaTags(note.tags, tag) };
+        return note && { ...note, tags: notaTags(note.tags, tag), imported: true };
       }),
     (count, done) =>
       chrome.storage.local.set({

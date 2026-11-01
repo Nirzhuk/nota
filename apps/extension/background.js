@@ -396,7 +396,7 @@ async function importReddit() {
           const note = redditNote(child, `reddit-${list}`);
           if (note && !seen.has(note.id)) {
             seen.add(note.id);
-            notes.push(note);
+            notes.push({ ...note, imported: true }); // the app won't bring back posts the user removed
           }
         }
         if (notes.length) {
@@ -458,6 +458,7 @@ async function importGithub() {
           : [],
         tags: ["github-stars"],
         savedAt: Date.parse(starred_at) || Date.now(),
+        imported: true,
       }));
       await enqueue(notes);
       total += notes.length;

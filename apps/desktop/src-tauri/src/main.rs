@@ -6,7 +6,7 @@
 mod hover;
 
 use serde_json::Value;
-use std::{fs, io::Read, path::PathBuf, sync::Mutex};
+use std::{collections::{HashMap, HashSet}, fs, io::Read, path::PathBuf, process::Stdio, sync::Mutex};
 use tauri::menu::{AboutMetadata, Menu, MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 use tauri::{AppHandle, Emitter, Manager, State, Wry};
 use tauri_plugin_clipboard_manager::ClipboardExt;
@@ -14,6 +14,7 @@ use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut,
 use tauri_plugin_opener::OpenerExt;
 
 const ADDR: &str = "127.0.0.1:4317";
+const MAC: bool = cfg!(target_os = "macos");
 
 struct Store {
     path: PathBuf,
@@ -22,6 +23,8 @@ struct Store {
     folders: Mutex<Vec<String>>,
     settings_path: PathBuf,
     settings: Mutex<serde_json::Map<String, Value>>, // sound, hoverKey, theme (see settings.tsx)
+    removed_path: PathBuf,
+    removed: Mutex<HashSet<String>>, // ids the user removed, so imports don't bring them back
 }
 
 // write to tmp + rename so a crash mid-write never corrupts the file
@@ -43,7 +46,10 @@ impl Store {
         let path = dir.join("notes.json");
         let folders_path = dir.join("folders.json");
         let settings_path = dir.join("settings.json");
+        let removed_path = dir.join("removed.json");
         Store {
+            removed: Mutex::new(read_json(&removed_path)),
+            removed_path,
             settings: Mutex::new(read_json(&settings_path)),
             settings_path,
             notes: Mutex::new(read_json(&path)),
@@ -57,27 +63,62 @@ impl Store {
         write_json(&self.path, &notes)
     }
 
-    fn upsert(&self, incoming: Vec<Value>) -> std::io::Result<()> {
+    fn remove(&self, id: String) -> std::io::Result<()> {
         let mut notes = self.notes.lock().unwrap();
-        for n in incoming {
-            let Some(id) = n.get("id").and_then(Value::as_str) else { continue };
+        notes.retain(|n| n["id"] != id.as_str());
+        self.save(&notes)?;
+        let mut removed = self.removed.lock().unwrap();
+        removed.insert(id);
+        write_json(&self.removed_path, &*removed)
+    }
+
+    // Returns whether any note changed, so a re-import of known posts writes nothing.
+    fn upsert(&self, incoming: Vec<Value>) -> std::io::Result<bool> {
+        let mut notes = self.notes.lock().unwrap();
+        let mut removed = self.removed.lock().unwrap();
+        let (mut changed, mut revived) = (false, false);
+        let mut index: HashMap<String, usize> = notes
+            .iter()
+            .enumerate()
+            .filter_map(|(i, n)| Some((n.get("id")?.as_str()?.to_string(), i)))
+            .collect();
+        for mut n in incoming {
+            let Some(id) = n.get("id").and_then(Value::as_str).map(str::to_string) else { continue };
             if n.get("url").and_then(Value::as_str).is_none() {
                 continue;
             }
-            match notes.iter().position(|o| o["id"] == id) {
+            // Bulk imports set `imported` and can't bring back a removed post.
+            // Anything else (a new like, undo, a drop) is deliberate and restores it.
+            let imported = n.as_object_mut().is_some_and(|o| o.remove("imported").is_some());
+            if imported && removed.contains(&id) {
+                continue;
+            }
+            revived |= removed.remove(&id);
+            match index.get(&id).copied() {
                 // Re-like / re-import refreshes content without losing richer live
                 // data, app-side fields like `folder`, or the original savedAt.
                 Some(i) => {
                     let old = notes[i].take();
                     let old_tags = tags_of(&old);
-                    let mut merged = merge_note(old, n);
+                    let mut merged = merge_note(old.clone(), n);
                     merge_tags(&mut merged, old_tags);
+                    changed |= merged != old;
                     notes[i] = merged;
                 }
-                None => notes.push(n),
+                None => {
+                    index.insert(id, notes.len());
+                    notes.push(n);
+                    changed = true;
+                }
             }
         }
-        self.save(&notes)
+        if revived {
+            write_json(&self.removed_path, &*removed)?;
+        }
+        if changed {
+            self.save(&notes)?;
+        }
+        Ok(changed)
     }
 }
 
@@ -150,23 +191,24 @@ fn merge_tags(note: &mut Value, mut tags: Vec<String>) {
     }
 }
 
-#[tauri::command]
+#[tauri::command(async)] // off the main thread: scales with note count
 fn list_notes(store: State<Store>) -> Vec<Value> {
     store.notes.lock().unwrap().clone()
 }
 
 // Bulk import from X's like.js archive. Upsert merges tags/folder into existing notes.
-#[tauri::command]
+#[tauri::command(async)] // off the main thread: scales with note count
 fn import_notes(app: AppHandle, store: State<Store>, notes: Vec<Value>) -> Result<usize, String> {
     let count = notes.len();
     enrich(&app, &notes);
-    store.upsert(notes).map_err(|e| e.to_string())?;
-    let _ = app.emit("notes-changed", ());
+    if store.upsert(notes).map_err(|e| e.to_string())? {
+        let _ = app.emit("notes-changed", ());
+    }
     Ok(count)
 }
 
 // Merge fields into a note; null removes the field. Used for `folder`.
-#[tauri::command]
+#[tauri::command(async)] // off the main thread: scales with note count
 fn update_note(store: State<Store>, id: String, patch: serde_json::Map<String, Value>) -> Result<(), String> {
     let mut notes = store.notes.lock().unwrap();
     let Some(Value::Object(note)) = notes.iter_mut().find(|n| n["id"] == id.as_str()) else {
@@ -195,7 +237,7 @@ fn set_folders(store: State<Store>, folders: Vec<String>) -> Result<(), String> 
 }
 
 // Rename (to = Some) or delete (to = None) a folder, moving its notes along.
-#[tauri::command]
+#[tauri::command(async)] // off the main thread: scales with note count
 fn rename_folder(store: State<Store>, from: String, to: Option<String>) -> Result<(), String> {
     let mut folders = store.folders.lock().unwrap();
     match &to {
@@ -248,14 +290,18 @@ fn apply_theme(app: &AppHandle) {
 
 #[tauri::command]
 fn reveal_notes(app: AppHandle) {
-    let _ = app.opener().reveal_item_in_dir(&app.state::<Store>().path);
+    let store = app.state::<Store>();
+    // notes.json doesn't exist until the first save, and revealing a missing file fails.
+    if !store.path.exists() {
+        let notes = store.notes.lock().unwrap();
+        let _ = store.save(&notes);
+    }
+    let _ = app.opener().reveal_item_in_dir(&store.path);
 }
 
-#[tauri::command]
+#[tauri::command(async)] // off the main thread: scales with note count
 fn delete_note(store: State<Store>, id: String) -> Result<(), String> {
-    let mut notes = store.notes.lock().unwrap();
-    notes.retain(|n| n["id"] != id.as_str());
-    store.save(&notes).map_err(|e| e.to_string())
+    store.remove(id).map_err(|e| e.to_string())
 }
 
 fn listen(app: AppHandle) {
@@ -286,8 +332,10 @@ fn listen(app: AppHandle) {
 fn save(app: &AppHandle, notes: Vec<Value>) -> u16 {
     enrich(app, &notes);
     match app.state::<Store>().upsert(notes) {
-        Ok(()) => {
-            let _ = app.emit("notes-changed", ());
+        Ok(changed) => {
+            if changed {
+                let _ = app.emit("notes-changed", ());
+            }
             200
         }
         Err(e) => {
@@ -336,13 +384,23 @@ fn enrich(app: &AppHandle, notes: &[Value]) {
 // (title, description, image). ponytail: system curl + a string scan of <head>
 // instead of an HTTP client and HTML parser; enough for meta tags.
 fn fetch_og(url: &str) -> Option<(Option<String>, Option<String>, Option<String>)> {
-    let out = std::process::Command::new("curl")
+    let mut curl = std::process::Command::new("curl");
+    #[cfg(windows)]
+    std::os::windows::process::CommandExt::creation_flags(&mut curl, 0x0800_0000); // CREATE_NO_WINDOW: no console flash
+    let mut curl = curl
         .args(["-sL", "--max-time", "8", "--compressed", "-H", "Accept-Language: en"])
         .args(["-A", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15"])
         .arg(url)
-        .output()
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
         .ok()?;
-    let html = String::from_utf8_lossy(&out.stdout);
+    // Meta tags live at the top: stop at 1 MB so a saved link to a huge file can't fill memory.
+    let mut body = Vec::new();
+    let _ = curl.stdout.take()?.take(1 << 20).read_to_end(&mut body);
+    let _ = curl.kill();
+    let _ = curl.wait();
+    let html = String::from_utf8_lossy(&body);
     let head = &html[..html.find("</head>").or_else(|| html.find("<body")).unwrap_or(html.len())];
     let mut meta = std::collections::HashMap::new();
     for tag in head.split("<meta").skip(1) {
@@ -397,34 +455,19 @@ mod og_test {
 
 fn menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
     let item = |id: &str, label: &str, key: &str| MenuItemBuilder::with_id(id, label).accelerator(key).build(app);
-    let nota = SubmenuBuilder::new(app, "Nota")
+    let nota = SubmenuBuilder::new(app, if MAC { "Nota" } else { "File" })
         .about(Some(AboutMetadata::default()))
         .separator()
         .item(&item("settings", "Settings…", "CmdOrCtrl+,")?)
         .separator()
-        .item(&item("reveal", "Show Notes in Finder", "CmdOrCtrl+Shift+O")?)
-        .separator()
-        .services()
-        .separator()
-        .hide()
-        .hide_others()
-        .show_all()
-        .separator()
-        .quit()
-        .build()?;
-    // Edit is required on macOS or copy/paste won't work in the search field.
-    let edit = SubmenuBuilder::new(app, "Edit")
-        .undo()
-        .redo()
-        .separator()
-        .cut()
-        .copy()
-        .paste()
-        .select_all()
-        .build()?;
+        .item(&item("reveal", if MAC { "Show Notes in Finder" } else { "Show Notes in Explorer" }, "CmdOrCtrl+Shift+O")?)
+        .separator();
+    let nota = if MAC { nota.services().separator().hide().hide_others().show_all().separator() } else { nota };
+    let nota = nota.quit().build()?;
     let view = SubmenuBuilder::new(app, "View")
         .item(&item("search", "Search", "CmdOrCtrl+F")?)
-        .item(&item("sidebar", "Toggle Sidebar", "Ctrl+Cmd+S")?)
+        // Windows menus reject the Cmd/Win modifier, and that error stops the app at startup.
+        .item(&item("sidebar", "Toggle Sidebar", if MAC { "Ctrl+Cmd+S" } else { "Ctrl+Shift+S" })?)
         .separator()
         .item(&item("filter:all", "All", "CmdOrCtrl+1")?)
         .item(&item("filter:x", "X", "CmdOrCtrl+2")?)
@@ -437,17 +480,23 @@ fn menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         .item(&item("filter:web", "Web", "CmdOrCtrl+9")?)
         .separator()
         .item(&item("bigger", "Bigger Cards", "CmdOrCtrl+=")?)
-        .item(&item("smaller", "Smaller Cards", "CmdOrCtrl+-")?)
-        .separator()
-        .fullscreen()
-        .build()?;
+        .item(&item("smaller", "Smaller Cards", "CmdOrCtrl+-")?);
+    // muda does nothing for the predefined fullscreen item on Windows.
+    let view = if MAC { view.separator().fullscreen() } else { view }.build()?;
     let window = SubmenuBuilder::new(app, "Window")
         .minimize()
         .maximize()
         .separator()
         .close_window()
         .build()?;
-    MenuBuilder::new(app).item(&nota).item(&edit).item(&view).item(&window).build()
+    let bar = MenuBuilder::new(app).item(&nota);
+    // Edit is required on macOS or copy/paste won't work in the search field. WebView2 handles them itself.
+    let bar = if MAC {
+        bar.item(&SubmenuBuilder::new(app, "Edit").undo().redo().separator().cut().copy().paste().select_all().build()?)
+    } else {
+        bar
+    };
+    bar.item(&view).item(&window).build()
 }
 
 fn show_search(app: &AppHandle) {
@@ -460,12 +509,16 @@ fn show_search(app: &AppHandle) {
 }
 
 // Alt+Shift+Space (Alt+Space is Raycast's): bring Nota forward and focus search.
-// Alt+Cmd+S: save the clipboard link. Double-tap Shift: save the hovered link (hover.rs).
+// Alt+Cmd+S (Alt+Shift+C off macOS): save the clipboard link. Double-tap Shift: save the hovered link (hover.rs, macOS only).
 fn global_shortcuts(app: &AppHandle) {
     #[cfg(target_os = "macos")]
     hover::watch(app.clone());
     let show = Shortcut::new(Some(Modifiers::ALT | Modifiers::SHIFT), Code::Space);
-    let clip = Shortcut::new(Some(Modifiers::ALT | Modifiers::SUPER), Code::KeyS);
+    let clip = if MAC {
+        Shortcut::new(Some(Modifiers::ALT | Modifiers::SUPER), Code::KeyS)
+    } else {
+        Shortcut::new(Some(Modifiers::ALT | Modifiers::SHIFT), Code::KeyC)
+    };
     let handler = app.plugin(
         tauri_plugin_global_shortcut::Builder::new()
             .with_handler(move |app, sc, ev| {
@@ -515,6 +568,11 @@ fn save_link(app: &AppHandle, url: &str, title: &str, tags: &[&str]) -> bool {
 }
 
 fn main() {
+    // Release builds on Windows have no console, so a crash would otherwise leave no trace.
+    std::panic::set_hook(Box::new(|info| {
+        eprintln!("{info}");
+        let _ = fs::write(std::env::temp_dir().join("nota-crash.log"), info.to_string());
+    }));
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
@@ -522,9 +580,7 @@ fn main() {
         .plugin(tauri_plugin_process::init())
         .menu(menu)
         .on_menu_event(|app, e| match e.id().as_ref() {
-            "reveal" => {
-                let _ = app.opener().reveal_item_in_dir(&app.state::<Store>().path);
-            }
+            "reveal" => reveal_notes(app.clone()),
             // search / filter:* are handled by the frontend
             id => {
                 let _ = app.emit("menu", id);
@@ -611,9 +667,18 @@ mod tests {
             })])
             .unwrap();
 
+        store
+            .upsert(vec![
+                json!({"id": "x:2", "url": "https://x.com/2", "savedAt": 1, "text": "first", "tags": ["a"]}),
+                json!({"id": "x:2", "url": "https://x.com/2", "savedAt": 2, "text": "second one", "tags": ["b"]}),
+            ])
+            .unwrap();
+
         {
             let notes = store.notes.lock().unwrap();
-            assert_eq!(notes.len(), 1);
+            assert_eq!(notes.len(), 2);
+            assert_eq!(notes[1]["text"], "second one"); // same id twice in one batch merged
+            assert_eq!(notes[1]["tags"], json!(["a", "b"]));
             assert_eq!(notes[0]["savedAt"], 100);
             assert_eq!(notes[0]["author"], "Alice @alice");
             assert_eq!(notes[0]["text"], "A much longer live post body");
@@ -622,6 +687,39 @@ mod tests {
             assert_eq!(notes[0]["tags"], json!(["like", "x-archive", "bookmark"]));
             assert_eq!(notes[0]["folder"], "Read");
         }
+
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn imports_skip_removed_posts_and_unchanged_saves_write_nothing() {
+        let dir = std::env::temp_dir().join(format!(
+            "nota-test-guard-{}",
+            SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos()
+        ));
+        fs::create_dir_all(&dir).unwrap();
+        let store = Store::load(dir.clone());
+        let live = json!({"id": "x:1", "url": "https://x.com/1", "savedAt": 1, "text": "post", "tags": ["like"]});
+        let mut import = live.clone();
+        import["imported"] = json!(true);
+
+        assert!(store.upsert(vec![live.clone()]).unwrap());
+        assert!(!store.upsert(vec![live.clone()]).unwrap(), "same post again changes nothing");
+        assert!(!store.upsert(vec![import.clone()]).unwrap(), "re-import changes nothing");
+        assert!(store.notes.lock().unwrap()[0].get("imported").is_none(), "the flag is never stored");
+
+        store.remove("x:1".into()).unwrap();
+        assert!(!store.upsert(vec![import.clone()]).unwrap());
+        assert!(store.notes.lock().unwrap().is_empty(), "import can't bring back a removed post");
+
+        let store = Store::load(dir.clone());
+        assert!(!store.upsert(vec![import.clone()]).unwrap());
+        assert!(store.notes.lock().unwrap().is_empty(), "still removed after a restart");
+
+        assert!(store.upsert(vec![live]).unwrap(), "a deliberate save restores it");
+        let store = Store::load(dir.clone());
+        assert!(!store.upsert(vec![import]).unwrap());
+        assert_eq!(store.notes.lock().unwrap().len(), 1, "restored post stays after a restart");
 
         fs::remove_dir_all(&dir).unwrap();
     }

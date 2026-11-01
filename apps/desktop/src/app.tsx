@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { DownloadSimple, MagnifyingGlass, Shuffle, X, SidebarSimple, SquaresFour } from "@phosphor-icons/react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Card, Player } from "./card";
+import { MAC, withMod } from "./platform";
 import { Sidebar } from "./sidebar";
 import { Settings } from "./settings";
 import { parseLikeArchive } from "./archive";
@@ -26,10 +27,24 @@ const readSidebar = () => {
   }
 };
 
+// Search text per note. Note objects are replaced when they change, so entries can't go stale.
+const hays = new WeakMap<Note, string>();
+const hayOf = (n: Note) => {
+  let hay = hays.get(n);
+  if (hay === undefined) {
+    hay = `${n.author} ${n.title} ${n.text} ${n.url} ${n.folder ?? ""} ${n.mine ?? ""} ${(n.tags ?? []).join(" ")} ${linksOf(n)
+      .map((l) => l.label)
+      .join(" ")}`.toLowerCase();
+    hays.set(n, hay);
+  }
+  return hay;
+};
+
 export default function App() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [folders, setFolders] = useState<string[]>([]);
   const [q, setQ] = useState("");
+  const deferredQ = useDeferredValue(q); // typing stays instant; the grid catches up
   const [removed, setRemoved] = useState<Note | null>(null);
   const undoTimer = useRef(0);
   const [view, setView] = useState<View>("all");
@@ -57,7 +72,14 @@ export default function App() {
     const load = () =>
       invoke<Note[]>("list_notes").then((ns) => {
         seen.current ??= new Set(ns.map((n) => n.id));
-        setNotes(ns);
+        // keep unchanged objects so memo(Card) skips them
+        setNotes((old) => {
+          const prev = new Map(old.map((n) => [n.id, n]));
+          return ns.map((n) => {
+            const p = prev.get(n.id);
+            return p && JSON.stringify(p) === JSON.stringify(n) ? p : n;
+          });
+        });
       });
     load();
     invoke<string[]>("list_folders").then(setFolders);
@@ -78,6 +100,11 @@ export default function App() {
       const el = document.activeElement;
       const typing =
         el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || (el as HTMLElement | null)?.isContentEditable;
+      // WebView2 treats these as browser shortcuts (find bar, print, reload). altKey: AltGr reports as Ctrl+Alt.
+      if (!MAC && !e.altKey && ((e.ctrlKey && "fgpru".includes(e.key.toLowerCase())) || e.key === "F3" || e.key === "F5")) {
+        e.preventDefault();
+        if (e.ctrlKey && e.key.toLowerCase() === "f") search.current?.focus();
+      }
       if (e.key === "/" && !typing && search.current) {
         e.preventDefault();
         search.current.focus();
@@ -218,7 +245,7 @@ export default function App() {
   const shown = useMemo(() => {
     if (picks) return notes.filter((n) => picks.includes(n.id));
     // every word must match somewhere: "rust async" finds posts with both
-    const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+    const words = deferredQ.toLowerCase().split(/\s+/).filter(Boolean);
     const inView = (n: Note) =>
       view === "all" ||
       (view.startsWith("src:") && n.source === view.slice(4)) ||
@@ -226,16 +253,9 @@ export default function App() {
       (view.startsWith("tag:") && (n.tags ?? []).includes(view.slice(4)));
     return notes
       .filter(inView)
-      .filter((n) => {
-        const hay = `${n.author} ${n.title} ${n.text} ${n.url} ${n.folder ?? ""} ${n.mine ?? ""} ${(n.tags ?? []).join(
-          " ",
-        )} ${linksOf(n)
-          .map((l) => l.label)
-          .join(" ")}`.toLowerCase();
-        return words.every((w) => hay.includes(w));
-      })
+      .filter((n) => words.every((w) => hayOf(n).includes(w)))
       .sort((a, b) => b.savedAt - a.savedAt);
-  }, [notes, q, view, picks]);
+  }, [notes, deferredQ, view, picks]);
 
   // Tags are the keywords given to watched elements plus import collections.
   const tags = useMemo(() => {
@@ -269,6 +289,7 @@ export default function App() {
         author: "X archive",
         text: like.text,
         tags: ["x-archive"],
+        imported: true,
         savedAt: now - i,
       }));
       // imported cards are not "new" arrivals; avoid thousands of entry animations
@@ -284,15 +305,15 @@ export default function App() {
     }
   };
 
-  const remove = (id: string) => {
-    const gone = notes.find((n) => n.id === id);
+  const remove = useCallback((id: string) => {
+    const gone = nav.current.notes.find((n) => n.id === id);
     setNotes((ns) => ns.filter((n) => n.id !== id));
     invoke("delete_note", { id });
     if (!gone) return;
     window.clearTimeout(undoTimer.current);
     setRemoved(gone);
     undoTimer.current = window.setTimeout(() => setRemoved(null), 6000);
-  };
+  }, []);
 
   const undoRemove = () => {
     if (!removed) return;
@@ -303,15 +324,17 @@ export default function App() {
 
   nav.current = { ids: shown.map((n) => n.id), sel: selected, notes: shown, remove };
 
-  const move = (id: string, folder: string | null) => {
+  const move = useCallback((id: string, folder: string | null) => {
     setNotes((ns) => ns.map((n) => (n.id === id ? { ...n, folder: folder ?? undefined } : n)));
     invoke("update_note", { id, patch: { folder } });
-  };
+  }, []);
 
-  const setMine = (id: string, mine: string) => {
+  const setMine = useCallback((id: string, mine: string) => {
     setNotes((ns) => ns.map((n) => (n.id === id ? { ...n, mine: mine || undefined } : n)));
     invoke("update_note", { id, patch: { mine: mine || null } });
-  };
+  }, []);
+
+  const openTag = useCallback((t: string) => setView(`tag:${t}`), []);
 
   const addFolder = (name: string) => {
     if (folders.includes(name)) return;
@@ -328,12 +351,15 @@ export default function App() {
     invoke("rename_folder", { from, to });
   };
 
-  const toggle = (id: string) =>
-    setOpen((o) => {
-      const next = new Set(o);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
+  const toggle = useCallback(
+    (id: string) =>
+      setOpen((o) => {
+        const next = new Set(o);
+        next.has(id) ? next.delete(id) : next.add(id);
+        return next;
+      }),
+    [],
+  );
 
   return (
     <div className={sidebar ? "app" : "app nosidebar"}>
@@ -355,7 +381,7 @@ export default function App() {
         <header data-tauri-drag-region>
           <button
             className="toggle"
-            title="Toggle sidebar  ⌃⌘S"
+            title={`Toggle sidebar  ${MAC ? "⌃⌘S" : "Ctrl+Shift+S"}`}
             aria-label={sidebar ? "Hide sidebar" : "Show sidebar"}
             aria-pressed={sidebar}
             onClick={() => setSidebar((s) => !s)}
@@ -375,7 +401,7 @@ export default function App() {
               onKeyDown={(e) => e.key === "Escape" && setQ("")}
             />
           </label>
-          <label className="size" title="Card size  ⌘=  ⌘−">
+          <label className="size" title={`Card size  ${withMod("=")}  ${withMod("−")}`}>
             <SquaresFour size={12} />
             <input
               type="range"
@@ -452,7 +478,7 @@ export default function App() {
                 onRemove={remove}
                 onMove={move}
                 onMine={setMine}
-                onTag={(t) => setView(`tag:${t}`)}
+                onTag={openTag}
                 onDrag={setDragging}
               />
             ))}

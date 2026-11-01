@@ -48,10 +48,22 @@ export const linksOf = (n: Note): Link[] =>
   n.links ?? (n.text?.match(URL_RE) ?? []).map((url) => ({ url, label: url.replace(/^https?:\/\/(www\.)?/, "") }));
 
 
+// One shared formatter each: creating an Intl formatter per call is slow across thousands of cards.
+const dayFormat = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" });
+const fullFormat = new Intl.DateTimeFormat(undefined, {
+  year: "numeric",
+  month: "numeric",
+  day: "numeric",
+  hour: "numeric",
+  minute: "numeric",
+  second: "numeric",
+});
+export const fullDate = (t: number) => fullFormat.format(t);
+
 export const ago = (t: number) => {
   const s = (Date.now() - t) / 1000;
   if (s < 3600) return `${Math.max(1, Math.floor(s / 60))}m`;
   if (s < 86400) return `${Math.floor(s / 3600)}h`;
   if (s < 86400 * 30) return `${Math.floor(s / 86400)}d`;
-  return new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return dayFormat.format(t);
 };

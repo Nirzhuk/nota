@@ -1,8 +1,8 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { memo, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Menu } from "@tauri-apps/api/menu";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { ArrowSquareOut, Check, Copy, FolderSimple, FolderSimplePlus, LinkSimple, Play, X } from "@phosphor-icons/react";
-import { SITES, ago, linksOf, type Note } from "./notes";
+import { SITES, ago, fullDate, linksOf, type Note } from "./notes";
 
 type Props = {
   n: Note;
@@ -19,7 +19,17 @@ type Props = {
   onTag: (tag: string) => void;
 };
 
-export function Card({ n, folders, isNew, expanded, selected, onToggle, onPlay, onRemove, onMove, onMine, onDrag, onTag }: Props) {
+const onFocus = (cb: () => void) => {
+  window.addEventListener("focus", cb);
+  return () => window.removeEventListener("focus", cb);
+};
+
+// memo(Card) rarely re-renders, so the age label refreshes itself when the window regains focus.
+function Ago({ t }: { t: number }) {
+  return <>{useSyncExternalStore(onFocus, () => ago(t))}</>;
+}
+
+export const Card = memo(function Card({ n, folders, isNew, expanded, selected, onToggle, onPlay, onRemove, onMove, onMine, onDrag, onTag }: Props) {
   const [copied, setCopied] = useState(false);
   const [editing, setEditing] = useState(false);
   const Glyph = SITES[n.source]?.icon ?? LinkSimple;
@@ -129,6 +139,7 @@ export function Card({ n, folders, isNew, expanded, selected, onToggle, onPlay, 
             src={src}
             alt="Attached image"
             loading="lazy"
+            decoding="async"
             referrerPolicy="no-referrer"
             onError={(e) => (e.currentTarget.style.display = "none")}
           />
@@ -171,8 +182,8 @@ export function Card({ n, folders, isNew, expanded, selected, onToggle, onPlay, 
       )}
 
       <footer className="bar">
-        <span className="when" title={new Date(n.savedAt).toLocaleString()}>
-          {ago(n.savedAt)}
+        <span className="when" title={fullDate(n.savedAt)}>
+          <Ago t={n.savedAt} />
         </span>
         {n.folder && (
           <span className="chip">
@@ -199,14 +210,14 @@ export function Card({ n, folders, isNew, expanded, selected, onToggle, onPlay, 
       </footer>
     </article>
   );
-}
+});
 
 // Thumbnail in the card; the player opens big in a <dialog> (Esc / backdrop closes).
 // One iframe at a time: a grid of embeds would load dozens of players.
 function YouTube({ id, title, onPlay }: { id: string; title?: string; onPlay: (id: string) => void }) {
   return (
     <button className="video poster" title="Play" aria-label={`Play video${title ? `: ${title}` : ""}`} onClick={() => onPlay(id)}>
-      <img src={`https://i.ytimg.com/vi/${id}/hqdefault.jpg`} alt="" loading="lazy" referrerPolicy="no-referrer" />
+      <img src={`https://i.ytimg.com/vi/${id}/hqdefault.jpg`} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" />
       <span className="play">
         <Play size={16} weight="fill" />
       </span>
