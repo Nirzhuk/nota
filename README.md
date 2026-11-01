@@ -124,13 +124,16 @@ apps/desktop     Tauri app, listens on 127.0.0.1:4317
 ## Releasing
 
 **Desktop app.** Bump `version` in `apps/desktop/src-tauri/tauri.conf.json` and
-push to `main`. CI builds a universal macOS `.dmg`, publishes it as release
-`v<version>`, and installed copies offer the update. A push without a version
+push to `main`. CI builds a universal macOS `.dmg` and a Windows `.exe`
+installer, publishes them as release `v<version>`, and installed copies offer
+the update. A push without a version
 bump doesn't release anything. To build a signed copy locally, run
 `bun run release` in `apps/desktop`.
 
 This needs the repo secrets `TAURI_SIGNING_PRIVATE_KEY` and
-`TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (from `~/.tauri/nota-updater.*`).
+`TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (from `~/.tauri/nota-updater.*`), plus the
+`APPLE_*` secrets for signing and notarizing, listed in
+`.github/workflows/release.yml`.
 
 **Extension.** Bump `version` in `apps/extension/manifest.json`, zip
 `apps/extension`, and upload it in the Chrome Web Store developer dashboard.

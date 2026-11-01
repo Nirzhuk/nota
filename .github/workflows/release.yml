@@ -1,9 +1,9 @@
 # Every push to main releases Nota — once per version.
 #
 # Bump "version" in apps/desktop/src-tauri/tauri.conf.json and push: CI builds a
-# universal macOS app, publishes GitHub Release v<version> with the .dmg, the
-# signed updater bundle and latest.json. Pushes that don't change the version
-# skip the build (the tag already exists).
+# Windows installer and a universal macOS app, publishes GitHub Release v<version>
+# with the .exe, the .dmg, the signed updater bundles and latest.json. Pushes that
+# don't change the version skip the build (the tag already exists).
 #
 # Installed apps poll releases/latest/download/latest.json and show
 # "Update to vX" in the sidebar.
@@ -13,8 +13,12 @@
 #              TAURI_SIGNING_PRIVATE_KEY_PASSWORD = contents of ~/.tauri/nota-updater.password
 #   - Settings -> Actions -> General -> Workflow permissions -> Read and write.
 #
-# ponytail: macOS only and not Developer ID signed/notarized; first install needs
-# right-click -> Open. Add APPLE_* secrets to tauri-action when that matters.
+# macOS is signed with Developer ID and notarized, using these secrets:
+#   APPLE_CERTIFICATE (base64 of the exported .p12), APPLE_CERTIFICATE_PASSWORD,
+#   APPLE_SIGNING_IDENTITY, APPLE_ID, APPLE_PASSWORD (app-specific), APPLE_TEAM_ID.
+#
+# ponytail: Windows isn't code signed; first install needs More info -> Run anyway.
+# Add a Windows certificate when that matters.
 
 name: release
 
@@ -44,7 +48,20 @@ jobs:
   release:
     needs: check
     if: needs.check.outputs.exists == 'false'
-    runs-on: macos-latest
+    strategy:
+      # One at a time, so the jobs can't overwrite each other's latest.json entries.
+      # Windows goes first: if it fails, macOS is cancelled and no release is created,
+      # so a fix can retry the same version.
+      max-parallel: 1
+      matrix:
+        include:
+          - os: windows-latest
+            targets: ""
+            args: --bundles nsis
+          - os: macos-latest
+            targets: aarch64-apple-darwin,x86_64-apple-darwin
+            args: --target universal-apple-darwin --bundles app,dmg
+    runs-on: ${{ matrix.os }}
     permissions:
       contents: write
     steps:
@@ -52,7 +69,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-apple-darwin,x86_64-apple-darwin
+          targets: ${{ matrix.targets }}
       - uses: swatinem/rust-cache@v2
         with:
           workspaces: apps/desktop/src-tauri
@@ -62,9 +79,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          # ponytail: ad-hoc sign; the local Apple Development cert isn't on the runner.
-          # Swap for a Developer ID cert + notarization to drop the Gatekeeper prompt.
-          APPLE_SIGNING_IDENTITY: "-"
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           projectPath: apps/desktop
           tauriScript: bunx tauri
@@ -73,4 +93,4 @@ jobs:
           releaseBody: See the commits since the last release.
           releaseDraft: false
           uploadUpdaterJson: true
-          args: --target universal-apple-darwin --bundles app,dmg --config src-tauri/tauri.release.conf.json
+          args: ${{ matrix.args }} --config src-tauri/tauri.release.conf.json
