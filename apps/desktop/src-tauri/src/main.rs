@@ -523,13 +523,60 @@ fn menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
     MenuBuilder::new(app).item(&nota).item(&edit).item(&view).item(&window).build()
 }
 
-fn show_search(app: &AppHandle) {
+fn show_window(app: &AppHandle) {
+    #[cfg(target_os = "macos")]
+    {
+        let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
+        let _ = app.show();
+    }
     if let Some(w) = app.get_webview_window("main") {
         let _ = w.show();
         let _ = w.unminimize();
         let _ = w.set_focus();
     }
+}
+
+fn show_search(app: &AppHandle) {
+    show_window(app);
     let _ = app.emit("menu", "search");
+}
+
+// Closing keeps Nota running in the menu bar, with no window or Dock icon, so the listener stays up.
+#[cfg(target_os = "macos")]
+fn hide_to_menu_bar(w: tauri::Window) {
+    // Hiding a fullscreen window leaves a black Space behind, so leave fullscreen first.
+    // ponytail: fixed wait for the macOS animation; AppKit's didExitFullScreen would need objc code.
+    let fullscreen = w.is_fullscreen().unwrap_or(false);
+    if fullscreen {
+        let _ = w.set_fullscreen(false);
+    }
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(if fullscreen { 800 } else { 0 }));
+        let app = w.app_handle();
+        let _ = w.hide();
+        let _ = app.hide(); // hands focus back to the previous app
+        // After hide: the other way round, the Dock icon stays.
+        let _ = app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+    });
+}
+
+#[cfg(target_os = "macos")]
+fn tray(app: &AppHandle) -> tauri::Result<()> {
+    // The accelerators only label the global shortcuts, which do the work (global_shortcuts).
+    let item = |id: &str, label: &str, key: &str| MenuItemBuilder::with_id(id, label).accelerator(key).build(app);
+    let menu = MenuBuilder::new(app)
+        .item(&item("tray:open", "Open Nota", "Alt+Shift+Space")?)
+        .item(&item("tray:clip", "Save Clipboard Link", "Alt+Cmd+S")?)
+        .separator()
+        .quit()
+        .build()?;
+    tauri::tray::TrayIconBuilder::new()
+        .icon(tauri::include_image!("icons/tray.png"))
+        .icon_as_template(true)
+        .tooltip("Nota")
+        .menu(&menu)
+        .build(app)?;
+    Ok(())
 }
 
 // Alt+Shift+Space (Alt+Space is Raycast's): bring Nota forward and focus search.
@@ -603,6 +650,13 @@ fn main() {
     }));
     let builder = tauri::Builder::default();
     let builder = if MAC { builder.menu(menu) } else { builder };
+    #[cfg(target_os = "macos")]
+    let builder = builder.on_window_event(|w, e| {
+        if let tauri::WindowEvent::CloseRequested { api, .. } = e {
+            api.prevent_close();
+            hide_to_menu_bar(w.clone());
+        }
+    });
     builder
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
@@ -616,6 +670,8 @@ fn main() {
         })
         .on_menu_event(|app, e| match e.id().as_ref() {
             "reveal" => reveal_notes(app.clone()),
+            "tray:open" => show_window(app),
+            "tray:clip" => save_clipboard_link(app),
             // search / filter:* are handled by the frontend
             id => {
                 let _ = app.emit("menu", id);
@@ -628,6 +684,8 @@ fn main() {
             images::start(app.handle(), dir.join("images"));
             apply_theme(app.handle());
             global_shortcuts(app.handle());
+            #[cfg(target_os = "macos")]
+            tray(app.handle())?;
             let handle = app.handle().clone();
             std::thread::spawn(move || listen(handle));
             Ok(())
@@ -649,8 +707,15 @@ fn main() {
             mcp::connect_assistant,
             mcp::disconnect_assistant
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running nota");
+        .build(tauri::generate_context!())
+        .expect("error while running nota")
+        .run(|_app, _e| {
+            // Launching Nota again (Finder, Spotlight) while it's hidden in the menu bar.
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Reopen { .. } = _e {
+                show_window(_app);
+            }
+        });
 }
 
 #[cfg(test)]
