@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "tauri dev",
     "build": "tauri build",
-    "release": "TAURI_SIGNING_PRIVATE_KEY=$(cat ~/.tauri/nota-updater.key) TAURI_SIGNING_PRIVATE_KEY_PASSWORD=$(cat ~/.tauri/nota-updater.password) tauri build -c src-tauri/tauri.release.conf.json",
+    "release": "bun run web:build && TAURI_SIGNING_PRIVATE_KEY=$(cat ~/.tauri/nota-updater.key) TAURI_SIGNING_PRIVATE_KEY_PASSWORD=$(cat ~/.tauri/nota-updater.password) tauri build -c src-tauri/tauri.release.conf.json",
     "web": "vite",
     "web:build": "tsc --noEmit && vite build"
   },

@@ -74,12 +74,16 @@ jobs:
         with:
           workspaces: apps/desktop/src-tauri
       - run: bun install --frozen-lockfile
+      # Build the frontend once. tauri.release.conf.json turns off beforeBuildCommand,
+      # because rewriting dist/ would make cargo recompile the app for the installer.
+      - run: bun run web:build
+        working-directory: apps/desktop
       # A startup failure on Windows is silent, so prove the app stays up before publishing.
       - if: runner.os == 'Windows'
         working-directory: apps/desktop
         shell: pwsh
         run: |
-          bunx tauri build --no-bundle
+          bunx tauri build --no-bundle --config src-tauri/tauri.release.conf.json
           $app = Start-Process src-tauri/target/release/nota.exe -PassThru
           Start-Sleep 15
           if ($app.HasExited) {
