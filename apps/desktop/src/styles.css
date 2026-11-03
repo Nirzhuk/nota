@@ -561,3 +561,6 @@ main.marking { padding-bottom: 64px; } /* the last row stays reachable under the
 .selbar .danger:hover { color: #ff453a; }
 .app:has(.selbar.open) .undo-toast, .app:has(.selbar.open) .busy { bottom: 66px; } /* toasts share the spot */
 @media (prefers-reduced-motion: reduce) { .selbar { transform: translate(-50%, 0); } }
+.version-check { padding: 0; border: 0; background: none; color: inherit; font: inherit; font-variant-numeric: inherit; cursor: pointer; }
+.version-check:hover:not(:disabled) { color: var(--fg); }
+.setup-note { margin: 0; padding: 0 12px 12px 30px; color: var(--dim); font-size: 11px; line-height: 1.45; }

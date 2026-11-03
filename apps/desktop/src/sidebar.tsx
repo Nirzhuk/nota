@@ -178,11 +178,24 @@ function Version({ children }: { children: ReactNode }) {
   const [version, setVersion] = useState("");
   const [update, setUpdate] = useState<Update | null>(null);
   const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<"" | "checking" | "latest" | "failed">("");
   useEffect(() => {
     getVersion().then(setVersion);
     // ponytail: checks once at launch; poll if people leave Nota open for days
     if (!import.meta.env.DEV) check().then(setUpdate, () => {});
   }, []);
+  // Clicking the version re-checks; the update button appears if a newer release exists.
+  const recheck = async () => {
+    setStatus("checking");
+    try {
+      const found = await check();
+      setUpdate(found);
+      setStatus(found ? "" : "latest");
+    } catch {
+      setStatus("failed");
+    }
+    setTimeout(() => setStatus(""), 2500);
+  };
   const install = async () => {
     setBusy(true);
     try {
@@ -202,7 +215,9 @@ function Version({ children }: { children: ReactNode }) {
         </button>
       )}
       <div className="version-row">
-        <span>v{version}{import.meta.env.DEV && " dev"}</span>
+        <button className="version-check" onClick={recheck} disabled={status === "checking"} title="Check for updates">
+          {status === "checking" ? "Checking…" : status === "latest" ? "Up to date" : status === "failed" ? "Check failed" : `v${version}${import.meta.env.DEV ? " dev" : ""}`}
+        </button>
         {children}
       </div>
     </div>

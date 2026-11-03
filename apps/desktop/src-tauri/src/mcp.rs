@@ -15,7 +15,7 @@ use std::{
     time::{Duration, UNIX_EPOCH},
 };
 
-const ASSISTANTS: [&str; 3] = ["hermes", "claude-code", "claude-desktop"];
+const ASSISTANTS: [&str; 4] = ["hermes", "claude-code", "codex", "claude-desktop"];
 const TEXT_LIMIT: usize = 4000;
 const MAX_IDS: usize = 200;
 const MAX_TAGS: usize = 10;
@@ -423,6 +423,7 @@ fn is_found(id: &str) -> bool {
     match id {
         "hermes" => find_cli("hermes").is_some(),
         "claude-code" => find_cli("claude").is_some(),
+        "codex" => find_cli("codex").is_some(),
         _ if cfg!(target_os = "macos") => {
             Path::new("/Applications/Claude.app").exists() || home().join("Applications/Claude.app").exists()
         }
@@ -440,8 +441,15 @@ fn is_connected(id: &str) -> bool {
     match id {
         "hermes" => fs::read_to_string(hermes_config()).is_ok_and(|text| yaml_has_server(&text, SERVER)),
         "claude-code" => has_nota(home().join(".claude.json")),
+        "codex" => fs::read_to_string(home().join(".codex/config.toml")).is_ok_and(|t| toml_has_server(&t, SERVER)),
         _ => has_nota(desktop_config()),
     }
+}
+
+// ponytail: line scan for Codex's `[mcp_servers.nota]` table, to avoid a TOML dependency.
+fn toml_has_server(text: &str, server: &str) -> bool {
+    let (table, sub) = (format!("[mcp_servers.{server}]"), format!("[mcp_servers.{server}."));
+    text.lines().map(str::trim).any(|l| l == table || l.starts_with(&sub))
 }
 
 // ponytail: reads only the shape Hermes writes, a nested `nota:` key under `mcp_servers:`, to avoid a YAML dependency.
@@ -530,6 +538,7 @@ pub fn connect_assistant(id: String) -> Result<(), String> {
     match id.as_str() {
         "hermes" => run_cli("hermes", &["mcp", "add", SERVER, "--command", &exe, "--args", "--mcp", "hermes"])?,
         "claude-code" => run_cli("claude", &["mcp", "add", "-s", "user", SERVER, "--", &exe, "--mcp", "claude-code"])?,
+        "codex" => run_cli("codex", &["mcp", "add", SERVER, "--", &exe, "--mcp", "codex"])?,
         "claude-desktop" => edit_desktop_config(Some(json!({ "command": exe, "args": ["--mcp", "claude-desktop"] })))?,
         _ => return Err(CANT_CONNECT.into()),
     }
@@ -544,6 +553,7 @@ pub fn disconnect_assistant(id: String) -> Result<(), String> {
     match id.as_str() {
         "hermes" => run_cli("hermes", &["mcp", "remove", SERVER]).map_err(|_| FAILED)?,
         "claude-code" => run_cli("claude", &["mcp", "remove", "-s", "user", SERVER]).map_err(|_| FAILED)?,
+        "codex" => run_cli("codex", &["mcp", "remove", SERVER]).map_err(|_| FAILED)?,
         "claude-desktop" => edit_desktop_config(None)?,
         _ => return Err(FAILED.into()),
     }
@@ -658,6 +668,13 @@ mod tests {
         assert_eq!(client.join().unwrap(), Some(200));
         drop(server);
         assert_eq!(post_status(&addr, "/organize", &body), None, "app closed");
+    }
+
+    #[test]
+    fn codex_config_detection() {
+        assert!(toml_has_server("model = \"x\"\n[mcp_servers.nota]\ncommand = \"b\"\n", "nota"));
+        assert!(toml_has_server("[mcp_servers.nota.env]\nA = \"1\"\n", "nota"));
+        assert!(!toml_has_server("[mcp_servers.nota-dev]\ncommand = \"b\"\n", "nota"), "each app only sees its own entry");
     }
 
     #[test]

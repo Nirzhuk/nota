@@ -189,6 +189,7 @@ type AssistantStatus = { found: boolean; connected: boolean; started: boolean; l
 const ASSISTANTS = [
   { id: "hermes", name: "Hermes" },
   { id: "claude-code", name: "Claude Code" },
+  { id: "codex", name: "Codex" },
   { id: "claude-desktop", name: "Claude Desktop" },
 ];
 
@@ -290,12 +291,17 @@ function Assistants() {
           </button>
         </div>
         {showSetup && (
+          <>
           <div className="setup">
             <pre>{snippet}</pre>
             <button className="btn" onClick={copy}>
               {copied ? "Copied" : "Copy"}
             </button>
           </div>
+          <p className="setup-note">
+            Apps with a form, like Codex (Plugins, MCPs, Add, Connect to a custom MCP): name <code>nota</code>, type STDIO, command the path above, one argument <code>--mcp</code>.
+          </p>
+          </>
         )}
       </div>
       <p className="caption">Connected assistants can search your saves, add tags and move saves to folders, but can't remove anything. What they read goes to their provider.</p>
