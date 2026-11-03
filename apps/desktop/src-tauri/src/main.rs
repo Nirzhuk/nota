@@ -15,7 +15,15 @@ use tauri_plugin_clipboard_manager::ClipboardExt;
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 use tauri_plugin_opener::OpenerExt;
 
-const ADDR: &str = "127.0.0.1:4317";
+// Debug builds (`bun dev`) are a separate app, Nota Dev: own data folder, port and assistant entry,
+// and no global shortcuts, so they can run next to the installed Nota and never touch it.
+pub const DEV: bool = cfg!(debug_assertions);
+pub const IDENTIFIER: &str = if DEV { "app.nota.desktop.dev" } else { "app.nota.desktop" };
+const ADDR: &str = if DEV { "127.0.0.1:4318" } else { "127.0.0.1:4317" };
+// The extension only knows 4317: NOTA_ADDR=127.0.0.1:4317 bun dev, with Nota quit, to test it against the dev app.
+pub fn addr() -> String {
+    std::env::var("NOTA_ADDR").ok().filter(|_| DEV).unwrap_or(ADDR.into())
+}
 const MAC: bool = cfg!(target_os = "macos");
 const BROWSER_UA: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15";
 
@@ -66,13 +74,58 @@ impl Store {
         write_json(&self.path, &notes)
     }
 
-    fn remove(&self, id: String) -> std::io::Result<()> {
+    // Batched, so removing a big selection writes notes.json once.
+    fn remove(&self, ids: Vec<String>) -> std::io::Result<()> {
         let mut notes = self.notes.lock().unwrap();
-        notes.retain(|n| n["id"] != id.as_str());
+        let gone: HashSet<&str> = ids.iter().map(String::as_str).collect();
+        notes.retain(|n| !n["id"].as_str().is_some_and(|id| gone.contains(id)));
         self.save(&notes)?;
         let mut removed = self.removed.lock().unwrap();
-        removed.insert(id);
+        removed.extend(ids);
         write_json(&self.removed_path, &*removed)
+    }
+
+    // Merge fields into notes; null removes the field. Ids that are gone are skipped.
+    fn update(&self, updates: Vec<(String, serde_json::Map<String, Value>)>) -> std::io::Result<()> {
+        let mut updates: HashMap<_, _> = updates.into_iter().collect();
+        let mut notes = self.notes.lock().unwrap();
+        for note in notes.iter_mut() {
+            let Some(patch) = note["id"].as_str().and_then(|id| updates.remove(id)) else { continue };
+            let Value::Object(note) = note else { continue };
+            for (k, v) in patch {
+                if v.is_null() {
+                    note.remove(&k);
+                } else {
+                    note.insert(k, v);
+                }
+            }
+        }
+        self.save(&notes)
+    }
+
+    // What assistants can change (mcp.rs). Add-only on purpose: a saved post can mislead an assistant,
+    // so at worst it mislabels saves. Ids that are gone are skipped.
+    fn organize(&self, ids: Vec<String>, tags: Vec<String>, folder: Option<String>) -> std::io::Result<()> {
+        if let Some(name) = &folder {
+            let mut folders = self.folders.lock().unwrap();
+            if !folders.contains(name) {
+                folders.push(name.clone());
+                write_json(&self.folders_path, &*folders)?;
+            }
+        }
+        let ids: HashSet<String> = ids.into_iter().collect();
+        let mut notes = self.notes.lock().unwrap();
+        for note in notes.iter_mut().filter(|n| n["id"].as_str().is_some_and(|id| ids.contains(id))) {
+            if !tags.is_empty() {
+                let old = tags_of(note);
+                note["tags"] = tags.clone().into();
+                merge_tags(note, old);
+            }
+            if let Some(name) = &folder {
+                note["folder"] = name.clone().into();
+            }
+        }
+        self.save(&notes)
     }
 
     // Returns whether any note changed, so a re-import of known posts writes nothing.
@@ -211,21 +264,9 @@ fn import_notes(app: AppHandle, store: State<Store>, notes: Vec<Value>) -> Resul
     Ok(count)
 }
 
-// Merge fields into a note; null removes the field. Used for `folder`.
 #[tauri::command(async)] // off the main thread: scales with note count
-fn update_note(store: State<Store>, id: String, patch: serde_json::Map<String, Value>) -> Result<(), String> {
-    let mut notes = store.notes.lock().unwrap();
-    let Some(Value::Object(note)) = notes.iter_mut().find(|n| n["id"] == id.as_str()) else {
-        return Err(format!("no note {id}"));
-    };
-    for (k, v) in patch {
-        if v.is_null() {
-            note.remove(&k);
-        } else {
-            note.insert(k, v);
-        }
-    }
-    store.save(&notes).map_err(|e| e.to_string())
+fn update_notes(store: State<Store>, updates: Vec<(String, serde_json::Map<String, Value>)>) -> Result<(), String> {
+    store.update(updates).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -304,14 +345,15 @@ fn reveal_notes(app: AppHandle) {
 }
 
 #[tauri::command(async)] // off the main thread: scales with note count
-fn delete_note(store: State<Store>, id: String) -> Result<(), String> {
-    store.remove(id).map_err(|e| e.to_string())
+fn delete_notes(store: State<Store>, ids: Vec<String>) -> Result<(), String> {
+    store.remove(ids).map_err(|e| e.to_string())
 }
 
 fn listen(app: AppHandle) {
-    let server = match tiny_http::Server::http(ADDR) {
+    let addr = addr();
+    let server = match tiny_http::Server::http(&addr) {
         Ok(s) => s,
-        Err(e) => return eprintln!("nota: can't listen on {ADDR}: {e}"),
+        Err(e) => return eprintln!("nota: can't listen on {addr}: {e}"),
     };
     for mut req in server.incoming_requests() {
         // X-Nota forces a CORS preflight, so random web pages can't post here
@@ -332,9 +374,34 @@ fn listen(app: AppHandle) {
                     _ => 400,
                 }
             }
+            (tiny_http::Method::Post, "/organize", true) => {
+                let mut body = Vec::new();
+                let _ = req.as_reader().take(1 << 20).read_to_end(&mut body);
+                match serde_json::from_slice::<Value>(&body) {
+                    Ok(body @ Value::Object(_)) => organize(&app, body),
+                    _ => 400,
+                }
+            }
             _ => 404,
         };
         let _ = req.respond(tiny_http::Response::empty(status));
+    }
+}
+
+fn organize(app: &AppHandle, body: Value) -> u16 {
+    let strings = |key: &str| -> Vec<String> {
+        body[key].as_array().into_iter().flatten().filter_map(Value::as_str).map(str::to_string).collect()
+    };
+    let folder = body["folder"].as_str().map(str::to_string);
+    match app.state::<Store>().organize(strings("ids"), strings("tags"), folder) {
+        Ok(()) => {
+            let _ = app.emit("notes-changed", ());
+            200
+        }
+        Err(e) => {
+            eprintln!("nota: organize failed: {e}");
+            500
+        }
     }
 }
 
@@ -470,7 +537,7 @@ mod og_test {
 // app.tsx handles the same shortcuts there.
 fn menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
     let item = |id: &str, label: &str, key: &str| MenuItemBuilder::with_id(id, label).accelerator(key).build(app);
-    let nota = SubmenuBuilder::new(app, "Nota")
+    let nota = SubmenuBuilder::new(app, &app.package_info().name)
         .about(Some(AboutMetadata::default()))
         .separator()
         .item(&item("settings", "Settings…", "CmdOrCtrl+,")?)
@@ -565,7 +632,7 @@ fn tray(app: &AppHandle) -> tauri::Result<()> {
     // The accelerators only label the global shortcuts, which do the work (global_shortcuts).
     let item = |id: &str, label: &str, key: &str| MenuItemBuilder::with_id(id, label).accelerator(key).build(app);
     let menu = MenuBuilder::new(app)
-        .item(&item("tray:open", "Open Nota", "Alt+Shift+Space")?)
+        .item(&item("tray:open", &format!("Open {}", app.package_info().name), "Alt+Shift+Space")?)
         .item(&item("tray:clip", "Save Clipboard Link", "Alt+Cmd+S")?)
         .separator()
         .quit()
@@ -573,7 +640,7 @@ fn tray(app: &AppHandle) -> tauri::Result<()> {
     tauri::tray::TrayIconBuilder::new()
         .icon(tauri::include_image!("icons/tray.png"))
         .icon_as_template(true)
-        .tooltip("Nota")
+        .tooltip(&app.package_info().name)
         .menu(&menu)
         .build(app)?;
     Ok(())
@@ -648,6 +715,16 @@ fn main() {
         eprintln!("{info}");
         let _ = fs::write(std::env::temp_dir().join("nota-crash.log"), info.to_string());
     }));
+    let mut context = tauri::generate_context!();
+    if DEV {
+        let config = context.config_mut();
+        config.identifier = IDENTIFIER.into();
+        config.product_name = Some("Nota Dev".into());
+        for window in &mut config.app.windows {
+            window.title = "Nota Dev".into();
+        }
+        context.package_info_mut().name = "Nota Dev".into(); // names the autostart entry too
+    }
     let builder = tauri::Builder::default();
     let builder = if MAC { builder.menu(menu) } else { builder };
     #[cfg(target_os = "macos")]
@@ -683,7 +760,9 @@ fn main() {
             app.manage(Store::load(dir.clone()));
             images::start(app.handle(), dir.join("images"));
             apply_theme(app.handle());
-            global_shortcuts(app.handle());
+            if !DEV {
+                global_shortcuts(app.handle()); // ponytail: the installed Nota owns these; remove the check to test them, with it quit
+            }
             #[cfg(target_os = "macos")]
             tray(app.handle())?;
             let handle = app.handle().clone();
@@ -692,8 +771,8 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             list_notes,
-            delete_note,
-            update_note,
+            delete_notes,
+            update_notes,
             import_notes,
             list_folders,
             set_folders,
@@ -707,7 +786,7 @@ fn main() {
             mcp::connect_assistant,
             mcp::disconnect_assistant
         ])
-        .build(tauri::generate_context!())
+        .build(context)
         .expect("error while running nota")
         .run(|_app, _e| {
             // Launching Nota again (Finder, Spotlight) while it's hidden in the menu bar.
@@ -723,6 +802,72 @@ mod tests {
     use super::*;
     use serde_json::json;
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn organize_only_adds_tags_and_registers_new_folders() {
+        let dir = std::env::temp_dir().join(format!(
+            "nota-organize-test-{}",
+            SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos()
+        ));
+        fs::create_dir_all(&dir).unwrap();
+        let store = Store::load(dir.clone());
+        store
+            .upsert(vec![
+                json!({"id": "1", "url": "https://x.com", "tags": ["x-bookmarks", "rust"], "folder": "Old"}),
+                json!({"id": "2", "url": "https://x.com"}),
+                json!({"id": "3", "url": "https://x.com", "tags": ["keep"]}),
+            ])
+            .unwrap();
+
+        let ids = vec!["1".to_string(), "2".to_string(), "gone".to_string()];
+        store.organize(ids.clone(), vec!["rust".into(), "async".into()], Some("Reading".into())).unwrap();
+        store.organize(ids, vec![], Some("Reading".into())).unwrap();
+
+        let reloaded = Store::load(dir.clone());
+        let notes = reloaded.notes.lock().unwrap();
+        assert_eq!(notes[0]["tags"], json!(["x-bookmarks", "rust", "async"]), "keeps old tags, no duplicates");
+        assert_eq!(notes[0]["folder"], "Reading");
+        assert_eq!(notes[1]["tags"], json!(["rust", "async"]));
+        assert_eq!(notes[2], json!({"id": "3", "url": "https://x.com", "tags": ["keep"]}), "other notes untouched");
+        assert_eq!(*reloaded.folders.lock().unwrap(), ["Reading"], "registered once, so the sidebar shows it");
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn bulk_update_and_remove_touch_only_the_given_notes() {
+        let dir = std::env::temp_dir().join(format!(
+            "nota-bulk-test-{}",
+            SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos()
+        ));
+        fs::create_dir_all(&dir).unwrap();
+        let store = Store::load(dir.clone());
+        let note = |id: &str| json!({"id": id, "url": "https://x.com", "folder": "Old", "tags": ["a"]});
+        store.upsert(vec![note("1"), note("2"), note("3")]).unwrap();
+
+        let patch = |v: Value| v.as_object().unwrap().clone();
+        store
+            .update(vec![
+                ("1".into(), patch(json!({"folder": "New"}))),
+                ("2".into(), patch(json!({"folder": null, "tags": ["a", "b"]}))),
+                ("gone".into(), patch(json!({"folder": "New"}))),
+            ])
+            .unwrap();
+        {
+            let notes = store.notes.lock().unwrap();
+            assert_eq!(notes[0]["folder"], "New");
+            assert!(notes[1].get("folder").is_none());
+            assert_eq!(notes[1]["tags"], json!(["a", "b"]));
+            assert_eq!(notes[2], note("3"));
+            assert_eq!(notes.len(), 3);
+        }
+
+        store.remove(vec!["1".into(), "3".into()]).unwrap();
+        let reloaded = Store::load(dir.clone()); // both reached disk, and imports stay blocked
+        assert_eq!(reloaded.notes.lock().unwrap().len(), 1);
+        assert_eq!(reloaded.notes.lock().unwrap()[0]["id"], "2");
+        assert!(reloaded.removed.lock().unwrap().contains("1") && reloaded.removed.lock().unwrap().contains("3"));
+        let _ = fs::remove_dir_all(dir);
+    }
 
     #[test]
     fn upsert_merges_without_losing_richer_or_app_fields() {
@@ -744,7 +889,8 @@ mod tests {
                 "images": ["a.jpg"],
                 "links": [{"url": "https://x.com/a", "label": "x"}],
                 "tags": ["like"],
-                "folder": "Read"
+                "folder": "Reading",
+                "read": true
             })])
             .unwrap();
         // an archive/import save: shorter text, no images, different tag
@@ -791,7 +937,8 @@ mod tests {
             assert_eq!(notes[0]["images"], json!(["b.jpg"]));
             assert_eq!(notes[0]["links"], json!([{"url": "https://x.com/a", "label": "x"}]));
             assert_eq!(notes[0]["tags"], json!(["like", "x-archive", "bookmark"]));
-            assert_eq!(notes[0]["folder"], "Read");
+            assert_eq!(notes[0]["folder"], "Reading");
+            assert_eq!(notes[0]["read"], true); // app-side read state survives a re-import
         }
 
         fs::remove_dir_all(&dir).unwrap();
@@ -814,7 +961,7 @@ mod tests {
         assert!(!store.upsert(vec![import.clone()]).unwrap(), "re-import changes nothing");
         assert!(store.notes.lock().unwrap()[0].get("imported").is_none(), "the flag is never stored");
 
-        store.remove("x:1".into()).unwrap();
+        store.remove(vec!["x:1".into()]).unwrap();
         assert!(!store.upsert(vec![import.clone()]).unwrap());
         assert!(store.notes.lock().unwrap().is_empty(), "import can't bring back a removed post");
 

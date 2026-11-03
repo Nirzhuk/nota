@@ -20,6 +20,7 @@ const SHORTCUTS: { what: string; combos: string[][]; sep?: string }[] = [
   { what: "Open the selected card", combos: [[MAC ? "↩" : "Enter"]] },
   { what: "Remove the selected card", combos: [["X"]] },
   { what: "Clear selection", combos: [["Esc"]] },
+  { what: "Add a card to the selection", combos: [[MOD, "Click"]] },
   { what: "Filter by source", combos: [[MOD, "1"], [MOD, "9"]], sep: "…" },
   { what: "Bigger / smaller cards", combos: [[MOD, "="], [MOD, "−"]], sep: "/" },
   { what: "Toggle sidebar", combos: [MAC ? ["⌃", "⌘", "S"] : ["Ctrl", "Shift", "S"]] },
@@ -297,7 +298,7 @@ function Assistants() {
           </div>
         )}
       </div>
-      <p className="caption">Connected assistants can search and read your saves, but can't change them. What they read goes to their provider.</p>
+      <p className="caption">Connected assistants can search your saves, add tags and move saves to folders, but can't remove anything. What they read goes to their provider.</p>
     </>
   );
 }

@@ -180,7 +180,8 @@ function Version({ children }: { children: ReactNode }) {
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     getVersion().then(setVersion);
-    check().then(setUpdate, () => {}); // ponytail: checks once at launch; poll if people leave Nota open for days
+    // ponytail: checks once at launch; poll if people leave Nota open for days
+    if (!import.meta.env.DEV) check().then(setUpdate, () => {});
   }, []);
   const install = async () => {
     setBusy(true);
@@ -201,7 +202,7 @@ function Version({ children }: { children: ReactNode }) {
         </button>
       )}
       <div className="version-row">
-        <span>v{version}</span>
+        <span>v{version}{import.meta.env.DEV && " dev"}</span>
         {children}
       </div>
     </div>

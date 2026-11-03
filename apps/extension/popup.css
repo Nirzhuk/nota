@@ -18,13 +18,8 @@
 }
 [hidden] { display: none !important; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-/* A transparent background-image stops the body's background propagating to
-   the canvas, so the popup body's radius actually rounds instead of painting
-   the full square viewport. */
-html { background-image: linear-gradient(transparent, transparent); }
 body {
   width: 320px;
-  border-radius: 12px;
   background: var(--bg);
   color: var(--fg);
   font: 12px/1.4 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;

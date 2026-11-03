@@ -69,8 +69,8 @@ async function tools(tab) {
   } catch {}
   xIsList =
     /^https:\/\/(x|twitter)\.com\//.test(tab?.url ?? "") &&
-    /^\/(?:i\/history(?:\/like)?|i\/bookmarks|[^/]+\/likes)\/?$/.test(path);
-  const likes = /\/(?:i\/history\/like|likes)\/?$/.test(path);
+    /^\/(?:i\/history(?:\/likes?)?|i\/bookmarks|[^/]+\/likes)\/?$/.test(path);
+  const likes = /\/(?:i\/history\/likes?|likes)\/?$/.test(path);
   $("x").textContent = xIsList ? "Import" : "Open";
   $("x-sub").textContent = xIsList
     ? `This page → #x-${likes ? "likes" : "bookmarks"}`
@@ -81,7 +81,7 @@ async function tools(tab) {
       await chrome.tabs.sendMessage(tab.id, { type: "import" }).catch(() => {});
       window.close();
     } else {
-      await chrome.tabs.create({ url: "https://x.com/i/bookmarks" });
+      await chrome.tabs.create({ url: "https://x.com/i/history/likes" });
       window.close();
     }
   };
@@ -237,10 +237,20 @@ $("prefs-btn").onclick = () => {
 };
 
 // Import lives in a popover behind the header icon; Esc or a click outside closes it.
+const importPop = $("import-pop");
+function fitImport() {
+  // The popover is absolutely positioned, so it adds nothing to the popup's
+  // height; reserve its footprint or Chrome clips the rows below the fold.
+  document.body.style.minHeight = importPop.hidden
+    ? ""
+    : `${importPop.offsetTop + importPop.offsetHeight + 8}px`;
+}
+new ResizeObserver(fitImport).observe(importPop);
 function showImport(on) {
-  $("import-pop").hidden = !on;
+  importPop.hidden = !on;
   $("import-btn").classList.toggle("on", on);
   $("import-btn").setAttribute("aria-expanded", String(on));
+  fitImport();
 }
 $("import-btn").innerHTML = notaIcon("download", 14);
 $("import-btn").onclick = (e) => {

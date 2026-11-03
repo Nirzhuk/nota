@@ -2,6 +2,6 @@
   "$schema": "https://turbo.build/schema.json",
   "tasks": {
     "build": { "outputs": ["dist/**", "src-tauri/target/release/bundle/**"] },
-    "dev": { "cache": false, "persistent": true }
+    "dev": { "cache": false, "persistent": true, "passThroughEnv": ["NOTA_ADDR"] }
   }
 }

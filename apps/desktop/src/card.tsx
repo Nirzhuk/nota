@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { Menu } from "@tauri-apps/api/menu";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { ArrowSquareOut, Check, Copy, FolderSimple, FolderSimplePlus, LinkSimple, NotePencil, Play, Tag, X } from "@phosphor-icons/react";
+import { ArrowSquareOut, Check, CheckCircle, Circle, Copy, FolderSimple, FolderSimplePlus, LinkSimple, NotePencil, Play, Tag, X } from "@phosphor-icons/react";
 import { SITES, ago, fullDate, linksOf, type Note } from "./notes";
 
 type Props = {
@@ -15,6 +15,7 @@ type Props = {
   onToggle: (id: string) => void;
   onPlay: (videoId: string) => void;
   onRemove: (id: string) => void;
+  onRead: (id: string, read: boolean) => void;
   onMove: (id: string, folder: string | null) => void;
   onMine: (id: string, mine: string) => void;
   onDrag: (dragging: boolean) => void;
@@ -53,7 +54,19 @@ function Ago({ t }: { t: number }) {
   return <>{useSyncExternalStore(onFocus, () => ago(t))}</>;
 }
 
-export const Card = memo(function Card({ n, folders, isNew, expanded, selected, onToggle, onPlay, onRemove, onMove, onMine, onDrag, onTag, onTags }: Props) {
+// Same shape as the import tags (x-archive): lowercase, dashes, no leading #.
+export const cleanTag = (raw: string) => raw.trim().replace(/^#+/, "").replace(/\s+/g, "-").toLowerCase();
+
+// native macOS menu: one "Move to" list for the folder button, right-click and the selection bar
+export const moveItems = (notes: Note[], folders: string[], onPick: (folder: string | null) => void) => [
+  { text: "No Folder", checked: notes.every((n) => !n.folder), action: () => onPick(null) },
+  { item: "Separator" as const },
+  ...(folders.length
+    ? folders.map((f) => ({ text: f, checked: notes.every((n) => n.folder === f), action: () => onPick(f) }))
+    : [{ text: "Add folders in the sidebar", enabled: false }]),
+];
+
+export const Card = memo(function Card({ n, folders, isNew, expanded, selected, onToggle, onPlay, onRemove, onRead, onMove, onMine, onDrag, onTag, onTags }: Props) {
   const [copied, setCopied] = useState(false);
   const [pop, setPop] = useState<{ kind: PopKind; at: DOMRect } | null>(null); // open popover, anchored to the tools
   const tools = useRef<HTMLSpanElement>(null);
@@ -97,32 +110,25 @@ export const Card = memo(function Card({ n, folders, isNew, expanded, selected, 
     const mine = raw.trim();
     if (mine !== (n.mine ?? "")) onMine(n.id, mine);
   };
-  // Same shape as the import tags (x-archive): lowercase, dashes, no leading #.
   const addTag = (raw: string) => {
-    const tag = raw.trim().replace(/^#+/, "").replace(/\s+/g, "-").toLowerCase();
+    const tag = cleanTag(raw);
     if (tag && !n.tags?.includes(tag)) onTags(n.id, [...(n.tags ?? []), tag]);
   };
 
-  // native macOS menus: same "Move to" list for the folder button and right-click
-  const moveItems = () => [
-    { text: "No Folder", checked: !n.folder, action: () => onMove(n.id, null) },
-    { item: "Separator" as const },
-    ...(folders.length
-      ? folders.map((f) => ({ text: f, checked: n.folder === f, action: () => onMove(n.id, f) }))
-      : [{ text: "Add folders in the sidebar", enabled: false }]),
-  ];
-  const folderMenu = async () => (await Menu.new({ items: moveItems() })).popup();
+  const items = () => moveItems([n], folders, (f) => onMove(n.id, f));
+  const folderMenu = async () => (await Menu.new({ items: items() })).popup();
   const contextMenu = async (e: React.MouseEvent) => {
     e.preventDefault();
     const menu = await Menu.new({
       items: [
         { text: "Open Post", action: () => openUrl(n.url) },
-        { text: "Move to", items: moveItems() },
+        { text: "Move to", items: items() },
         { text: n.mine ? "Edit Note…" : "Add Note…", action: () => openPop("note") },
         { text: "Add Tag…", action: () => openPop("tag") },
         ...(n.tags?.length
           ? [{ text: "Remove Tag", items: n.tags.map((t) => ({ text: `#${t}`, action: () => onTags(n.id, n.tags!.filter((x) => x !== t)) })) }]
           : []),
+        { text: n.read ? "Mark as Unread" : "Mark as Read", action: () => onRead(n.id, !n.read) },
         { item: "Separator" },
         { text: "Remove", action: () => onRemove(n.id) },
       ],
@@ -132,9 +138,10 @@ export const Card = memo(function Card({ n, folders, isNew, expanded, selected, 
 
   return (
     <article
-      className={`${isNew ? "new" : ""}${selected ? " selected" : ""}`.trim()}
+      data-id={n.id}
+      className={`${isNew ? "new" : ""}${selected ? " selected" : ""}${n.read ? " read" : ""}`.trim()}
       onContextMenu={contextMenu}
-      aria-label={`${SITES[n.source]?.label ?? "Post"}${n.author ? ` by ${n.author}` : ""}`}
+      aria-label={`${SITES[n.source]?.label ?? "Post"}${n.author ? ` by ${n.author}` : ""}${n.read ? ", read" : ""}`}
     >
       {/* drag handle: dragging the whole card would block selecting its text */}
       <div
@@ -155,9 +162,20 @@ export const Card = memo(function Card({ n, folders, isNew, expanded, selected, 
         <Glyph size={12} />
         <span className="author">{n.author}</span>
       </div>
-      <button className="remove" title="Remove" aria-label="Remove note" onClick={() => onRemove(n.id)}>
-        <X size={12} />
-      </button>
+      <span className="corner">
+        <button
+          className={n.read ? "read-toggle on" : "read-toggle"}
+          title={n.read ? "Mark as unread" : "Mark as read"}
+          aria-label={n.read ? "Mark as unread" : "Mark as read"}
+          aria-pressed={!!n.read}
+          onClick={() => onRead(n.id, !n.read)}
+        >
+          {n.read ? <CheckCircle size={12} weight="fill" /> : <Circle size={12} />}
+        </button>
+        <button className="remove" title="Remove" aria-label="Remove note" onClick={() => onRemove(n.id)}>
+          <X size={12} />
+        </button>
+      </span>
 
       {n.title && <h3>{n.title}</h3>}
       {n.text && (
@@ -249,7 +267,7 @@ export const Card = memo(function Card({ n, folders, isNew, expanded, selected, 
 
 // In <body> at a fixed spot, so opening it never moves the cards. Clicking away saves.
 // Enter saves a tag (a note needs it for new lines). Esc cancels a tag but saves a note, so typing isn't lost.
-function FieldPopover({ kind, anchor, value, onDone }: { kind: PopKind; anchor: DOMRect; value: string; onDone: (value: string) => void }) {
+export function FieldPopover({ kind, anchor, value, onDone }: { kind: PopKind; anchor: DOMRect; value: string; onDone: (value: string) => void }) {
   useEffect(() => {
     const close = (e: WheelEvent) => {
       const field = document.activeElement as HTMLElement;

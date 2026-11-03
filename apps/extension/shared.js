@@ -201,8 +201,8 @@ function notaProgress(total) {
 
 // Scroll the page and save every post `collect()` finds, until nothing new
 // shows up. Esc or clicking the pill stops. Used for X bookmarks/likes (x.com/i/history).
-async function notaImport(collect, onTick) {
-  if (window.notaImporting) return;
+async function notaImport(collect, onTick, opts = {}) {
+  if (window.notaImporting) return { count: 0, done: false };
   window.notaImporting = true;
   notaShown = 0;
   // capture phase: X handles Escape itself and stops it before it bubbles to us
@@ -218,7 +218,7 @@ async function notaImport(collect, onTick) {
     idle = fresh.length ? 0 : idle + 1;
     if (fresh.length && (await notaSend(fresh)) === "stale") break;
     onTick?.(seen.size);
-    notaProgress(seen.size);
+    if (!opts.quiet) notaProgress(seen.size);
     scrollBy(0, innerHeight * 0.8);
     await new Promise((r) => setTimeout(r, 1200));
   }
@@ -226,5 +226,6 @@ async function notaImport(collect, onTick) {
   removeEventListener("keydown", stop, true);
   cancelAnimationFrame(notaRaf);
   onTick?.(seen.size, true);
-  notaToast("saved", `Imported ${seen.size} posts`);
+  if (!opts.quiet) notaToast("saved", `Imported ${seen.size} posts`);
+  return { count: seen.size, done: idle >= 6 };
 }

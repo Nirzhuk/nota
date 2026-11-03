@@ -36,8 +36,12 @@ export type Note = {
   folder?: string;
   tags?: string[];
   mine?: string; // personal note, written in the app
+  read?: boolean; // marked read: the card renders compact and dimmed
   savedAt: number;
 };
+
+// What the backend merges into a note; null removes the field.
+export type NotePatch = { folder?: string | null; mine?: string | null; tags?: string[] | null; read?: boolean | null };
 
 export type View = "all" | "settings" | `src:${Source}` | `folder:${string}` | `tag:${string}`;
 

@@ -1,15 +1,17 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { DownloadSimple, MagnifyingGlass, Shuffle, X, SidebarSimple, SquaresFour } from "@phosphor-icons/react";
+import { DownloadSimple, FunnelSimple, MagnifyingGlass, Shuffle, X, SidebarSimple, SquaresFour } from "@phosphor-icons/react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Card, Player } from "./card";
 import { MAC, withMod } from "./platform";
 import { WindowControls } from "./window-controls";
 import { Sidebar } from "./sidebar";
 import { Settings } from "./settings";
+import { Select, type Option } from "./select";
+import { NOTHING, SelectionBar, startMarquee } from "./selection";
 import { parseLikeArchive } from "./archive";
-import { SITES, linksOf, type Note, type Source, type View } from "./notes";
+import { SITES, linksOf, type Note, type NotePatch, type Source, type View } from "./notes";
 
 const SIZE = { min: 160, max: 480, step: 40, initial: 240 };
 const clampSize = (n: number) => Math.min(SIZE.max, Math.max(SIZE.min, n));
@@ -28,6 +30,39 @@ const readSidebar = () => {
   }
 };
 const EXTENSION = "https://chromewebstore.google.com/detail/pgdlcaikjpnmhcipgocnmilnilakafem";
+type NoteFilter = "all" | "unread" | "read" | "media" | "links" | "note";
+const FILTERS: Option<NoteFilter>[] = [
+  { value: "all", label: "All notes" },
+  { value: "unread", label: "Unread" },
+  { value: "read", label: "Read" },
+  { value: "media", label: "With media" },
+  { value: "links", label: "With links" },
+  { value: "note", label: "With my note" },
+];
+const readFilter = (): NoteFilter => {
+  try {
+    const saved = localStorage.getItem("filter");
+    return FILTERS.find((f) => f.value === saved)?.value ?? "all";
+  } catch {
+    return "all";
+  }
+};
+const matchesFilter = (n: Note, f: NoteFilter) => {
+  switch (f) {
+    case "all":
+      return true;
+    case "unread":
+      return !n.read;
+    case "read":
+      return !!n.read;
+    case "media":
+      return !!n.images?.length || n.source === "youtube";
+    case "links":
+      return linksOf(n).length > 0;
+    case "note":
+      return !!n.mine;
+  }
+};
 const readFlag = (key: string) => {
   try {
     return localStorage.getItem(key) === "1";
@@ -73,9 +108,10 @@ export default function App() {
   const [folders, setFolders] = useState<string[]>([]);
   const [q, setQ] = useState("");
   const deferredQ = useDeferredValue(q); // typing stays instant; the grid catches up
-  const [removed, setRemoved] = useState<Note | null>(null);
+  const [removed, setRemoved] = useState<Note[] | null>(null);
   const undoTimer = useRef(0);
   const [view, setView] = useState<View>("all");
+  const [filter, setFilter] = useState<NoteFilter>(readFilter);
   const [size, setSize] = useState(readSize);
   const [playing, setPlaying] = useState<string | null>(null);
   const [open, setOpen] = useState<Set<string>>(new Set());
@@ -89,12 +125,15 @@ export default function App() {
   const search = useRef<HTMLInputElement>(null);
   const archive = useRef<HTMLInputElement>(null);
   const busyTimer = useRef<number | undefined>(undefined);
-  const [selected, setSelected] = useState<string | null>(null);
-  const nav = useRef<{ ids: string[]; sel: string | null; notes: Note[]; remove: (id: string) => void }>({
+  const [selected, setSelected] = useState<string | null>(null); // j/k cursor; a multi-selection replaces it
+  const [marked, setMarked] = useState<ReadonlySet<string>>(NOTHING); // multi-selection
+  const nav = useRef<{ ids: string[]; sel: string | null; notes: Note[]; chosen: Note[]; remove: (id: string) => void; removeNotes: (gone: Note[]) => void }>({
     ids: [],
     sel: null,
     notes: [],
+    chosen: [],
     remove: () => {},
+    removeNotes: () => {},
   });
   const seen = useRef<Set<string> | null>(null); // ids present at first load: no entry animation
 
@@ -117,7 +156,11 @@ export default function App() {
       });
     load();
     invoke<string[]>("list_folders").then(setFolders);
-    const offNotes = listen("notes-changed", load);
+    // An assistant organizing saves can add a folder too.
+    const offNotes = listen("notes-changed", () => {
+      load();
+      invoke<string[]>("list_folders").then(setFolders);
+    });
     const offToast = listen<string>("toast", ({ payload }) => finishImport(payload));
     // ponytail: the extension pings every minute, so an event missed during startup just arrives on the next one
     const offExtension = listen("extension-seen", () => {
@@ -161,9 +204,13 @@ export default function App() {
         e.preventDefault();
         const i = sel ? ids.indexOf(sel) : -1;
         const next = e.key === "j" ? Math.min(ids.length - 1, i + 1) : i < 0 ? 0 : Math.max(0, i - 1);
+        setMarked(NOTHING);
         setSelected(ids[next]);
         document.querySelectorAll("main > article")[next]?.scrollIntoView({ block: "nearest" });
-      } else if (e.key === "Escape") setSelected(null);
+      } else if (e.key === "Escape") {
+        setSelected(null);
+        setMarked(NOTHING);
+      } else if (e.key === "x" && nav.current.chosen.length) nav.current.removeNotes(nav.current.chosen);
       else if (sel && e.key === "Enter") {
         const url = nav.current.notes.find((n) => n.id === sel)?.url;
         if (url) {
@@ -190,8 +237,9 @@ export default function App() {
     try {
       localStorage.setItem("cardSize", String(size));
       localStorage.setItem("sidebar", sidebar ? "shown" : "hidden");
+      localStorage.setItem("filter", filter);
     } catch {}
-  }, [size, sidebar]);
+  }, [size, sidebar, filter]);
 
   useEffect(() => () => clearTimeout(busyTimer.current), []);
 
@@ -299,9 +347,25 @@ export default function App() {
       (view.startsWith("tag:") && (n.tags ?? []).includes(view.slice(4)));
     return notes
       .filter(inView)
+      .filter((n) => matchesFilter(n, filter))
       .filter((n) => words.every((w) => hayOf(n).includes(w)))
       .sort((a, b) => b.savedAt - a.savedAt);
-  }, [notes, deferredQ, view, picks]);
+  }, [notes, deferredQ, view, filter, picks]);
+
+  // Actions only ever reach cards on screen: leaving the view drops the selection,
+  // and a card that drops out of the view (moved, untagged) leaves it.
+  useEffect(() => setMarked(NOTHING), [view, deferredQ, filter, picks]);
+  const chosen = useMemo(() => (marked.size ? shown.filter((n) => marked.has(n.id)) : []), [shown, marked]);
+  const live = useMemo(() => new Set(shown.map((n) => n.id)), [shown]);
+  // A card that left the view (marked read, moved, retagged) can't stay selected for actions.
+  useEffect(() => {
+    setMarked((m) => {
+      if (!m.size) return m;
+      const next = new Set([...m].filter((id) => live.has(id)));
+      return next.size === m.size ? m : next;
+    });
+    setSelected((s) => (s && !live.has(s) ? null : s));
+  }, [live]);
 
   // Tags are the ones added on cards, keywords given to watched elements, and import collections.
   const tags = useMemo(() => {
@@ -351,39 +415,56 @@ export default function App() {
     }
   };
 
-  const remove = useCallback((id: string) => {
-    const gone = nav.current.notes.find((n) => n.id === id);
-    setNotes((ns) => ns.filter((n) => n.id !== id));
-    invoke("delete_note", { id });
-    if (!gone) return;
+  const removeNotes = useCallback((gone: Note[]) => {
+    const ids = new Set(gone.map((n) => n.id));
+    setNotes((ns) => ns.filter((n) => !ids.has(n.id)));
+    setMarked(NOTHING);
+    invoke("delete_notes", { ids: [...ids] });
     window.clearTimeout(undoTimer.current);
     setRemoved(gone);
     undoTimer.current = window.setTimeout(() => setRemoved(null), 6000);
   }, []);
 
+  const remove = useCallback((id: string) => removeNotes(nav.current.notes.filter((n) => n.id === id)), [removeNotes]);
+
   const undoRemove = () => {
     if (!removed) return;
     window.clearTimeout(undoTimer.current);
-    invoke("import_notes", { notes: [removed] });
+    invoke("import_notes", { notes: removed });
     setRemoved(null);
   };
 
-  nav.current = { ids: shown.map((n) => n.id), sel: selected, notes: shown, remove };
+  nav.current = { ids: shown.map((n) => n.id), sel: selected, notes: shown, chosen, remove, removeNotes };
 
+  const patchNotes = useCallback((patches: Map<string, NotePatch>) => {
+    setNotes((ns) =>
+      ns.map((n) => {
+        const patch = patches.get(n.id);
+        if (!patch) return n;
+        const next: Note = { ...n };
+        for (const key of ["folder", "mine", "tags", "read"] as const) {
+          if (patch[key] === null) delete next[key];
+          else if (patch[key] !== undefined) (next[key] as unknown) = patch[key];
+        }
+        return next;
+      }),
+    );
+    invoke("update_notes", { updates: [...patches] });
+  }, []);
+
+  // Dragging a selected card takes the whole selection with it.
   const move = useCallback((id: string, folder: string | null) => {
-    setNotes((ns) => ns.map((n) => (n.id === id ? { ...n, folder: folder ?? undefined } : n)));
-    invoke("update_note", { id, patch: { folder } });
-  }, []);
+    const group = nav.current.chosen;
+    const ids = group.some((n) => n.id === id) ? group.map((n) => n.id) : [id];
+    patchNotes(new Map(ids.map((i) => [i, { folder }])));
+    if (ids.length > 1) setMarked(NOTHING);
+  }, [patchNotes]);
 
-  const setMine = useCallback((id: string, mine: string) => {
-    setNotes((ns) => ns.map((n) => (n.id === id ? { ...n, mine: mine || undefined } : n)));
-    invoke("update_note", { id, patch: { mine: mine || null } });
-  }, []);
+  const setMine = useCallback((id: string, mine: string) => patchNotes(new Map([[id, { mine: mine || null }]])), [patchNotes]);
 
-  const setTags = useCallback((id: string, tags: string[]) => {
-    setNotes((ns) => ns.map((n) => (n.id === id ? { ...n, tags: tags.length ? tags : undefined } : n)));
-    invoke("update_note", { id, patch: { tags: tags.length ? tags : null } });
-  }, []);
+  const setRead = useCallback((id: string, read: boolean) => patchNotes(new Map([[id, { read: read || null }]])), [patchNotes]);
+
+  const setTags = useCallback((id: string, tags: string[]) => patchNotes(new Map([[id, { tags: tags.length ? tags : null }]])), [patchNotes]);
 
   const openTag = useCallback((t: string) => setView(`tag:${t}`), []);
 
@@ -453,6 +534,17 @@ export default function App() {
               onKeyDown={(e) => e.key === "Escape" && setQ("")}
             />
           </label>
+          {!picks && (
+            <div className="filter">
+              <Select
+                label="Filter notes"
+                value={filter}
+                options={FILTERS}
+                onChange={setFilter}
+                icon={<FunnelSimple size={12} />}
+              />
+            </div>
+          )}
           <label className="size" title={`Card size  ${withMod("=")}  ${withMod("−")}`}>
             <SquaresFour size={12} />
             <input
@@ -502,7 +594,15 @@ export default function App() {
         </header>
 
         {/* only this scrolls, so the elastic bounce never drags the header */}
-        <div className="scroll">
+        <div
+          className="scroll"
+          onMouseDown={(e) =>
+            startMarquee(e, marked, (ids) => {
+              setSelected(null);
+              setMarked(ids);
+            })
+          }
+        >
         {view === "settings" ? (
           <Settings />
         ) : !hasSaved ? (
@@ -527,7 +627,27 @@ export default function App() {
               : "Like, save, or watch something. It shows up here."}
           </p>
         ) : (
-          <main style={{ columnWidth: size }} aria-label="Notes">
+          <main
+            className={chosen.length ? "marking" : undefined}
+            style={{ columnWidth: size }}
+            aria-label="Notes"
+            // Bubbles after the card's own handler, so this replaces its one-card drag pill.
+            onDragStart={(e) => {
+              const id = (e.target as HTMLElement).closest("article")?.getAttribute("data-id");
+              const ghost = document.getElementById("drag-ghost")!;
+              if (chosen.length < 2 || !id || !marked.has(id)) return;
+              ghost.textContent = `${chosen.length} notes`;
+              e.dataTransfer.setDragImage(ghost, 12, 12);
+            }}
+            // A selected card's own menu would act on one card, so the bar is the only menu. Elsewhere: back to one card.
+            onContextMenuCapture={(e) => {
+              if (!marked.size) return;
+              const id = (e.target as HTMLElement).closest("article")?.getAttribute("data-id");
+              if (!id || !marked.has(id)) return setMarked(NOTHING);
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          >
             {shown.map((n) => (
               <Card
                 key={n.id}
@@ -535,10 +655,11 @@ export default function App() {
                 folders={folders}
                 isNew={!seen.current?.has(n.id)}
                 expanded={open.has(n.id)}
-                selected={n.id === selected}
+                selected={n.id === selected || marked.has(n.id)}
                 onToggle={toggle}
                 onPlay={setPlaying}
                 onRemove={remove}
+                onRead={setRead}
                 onMove={move}
                 onMine={setMine}
                 onTag={openTag}
@@ -549,6 +670,13 @@ export default function App() {
           </main>
         )}
         </div>
+        <SelectionBar
+          notes={chosen}
+          folders={folders}
+          onPatch={patchNotes}
+          onRemove={removeNotes}
+          onClear={() => setMarked(NOTHING)}
+        />
       </div>
       <Player id={playing} onClose={() => setPlaying(null)} />
       <div id="drag-ghost" className="ghost" aria-hidden="true" />
@@ -566,7 +694,7 @@ export default function App() {
       )}
       {removed && (
         <div className="undo-toast" role="status">
-          Removed · <button onClick={undoRemove}>Undo</button>
+          Removed{removed.length > 1 ? ` ${removed.length} notes` : ""} · <button onClick={undoRemove}>Undo</button>
         </div>
       )}
     </div>

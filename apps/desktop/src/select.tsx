@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { CaretDown, Check } from "@phosphor-icons/react";
 
 export type Option<T extends string> = { value: T; label: string; hint?: string };
@@ -9,11 +9,13 @@ export function Select<T extends string>({
   options,
   onChange,
   label,
+  icon,
 }: {
   value: T;
   options: Option<T>[];
   onChange: (v: T) => void;
   label: string;
+  icon?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
@@ -64,6 +66,7 @@ export function Select<T extends string>({
         onClick={() => (open ? setOpen(false) : show())}
         onKeyDown={key}
       >
+        {icon}
         {current.label}
         <CaretDown size={11} weight="bold" />
       </button>

@@ -17,10 +17,15 @@ Thanks for helping. Bug reports, site fixes and small PRs are all welcome.
 You need [Bun](https://bun.sh), [Rust](https://rustup.rs) and Chrome.
 
 1. `bun install`
-2. `bun dev` starts the desktop app with hot reload.
+2. `bun dev` starts the desktop app with hot reload. Debug builds run as a
+   separate app, Nota Dev, with their own data folder (`app.nota.desktop.dev`),
+   port (4318) and assistant entry (`nota-dev`), and no global shortcuts, so
+   they can run next to an installed Nota without touching it.
 3. In Chrome, open `chrome://extensions`, turn on Developer mode, click
    **Load unpacked** and pick `apps/extension`. Click the reload icon on the
-   extension card after you change its files.
+   extension card after you change its files. The extension only talks to port
+   4317, so to test it against Nota Dev, quit Nota and run
+   `NOTA_ADDR=127.0.0.1:4317 bun dev`.
 
 ```
 apps/extension   Chrome extension (MV3), plain JS, no build step

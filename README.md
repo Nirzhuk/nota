@@ -86,10 +86,12 @@ you removed stay removed unless you save them again yourself.
 your upvoted and saved posts with images and links. Reddit only returns the
 last 1000 of each. Tags are `#reddit-upvoted` and `#reddit-saved`.
 
-**X.** Open your bookmarks (`x.com/i/bookmarks`), your Likes tab, or
-`x.com/i/history`, then click **Import** in the popup. The extension scrolls
-the list and saves each post it passes. Press Esc or click the progress pill to
-stop. Tags are `#x-bookmarks` and `#x-likes`.
+**X.** Open your bookmarks (`x.com/i/bookmarks`), your Likes tab
+(`x.com/i/history/likes`), or `x.com/i/history`, then click **Import** in the
+popup. On the History page an **Import all** button appears in the corner: it
+walks the Bookmarks and Likes tabs, scrolls each list, and counts the posts it
+saves. Press Esc or click the button again to stop. Tags are `#x-bookmarks` and
+`#x-likes`.
 
 **X archive.** This gets every like you ever made. Download your data from X,
 click the download icon in the Nota app, and pick `data/like.js`. The archive
@@ -100,6 +102,9 @@ also saved the same post live, Nota merges the two.
 
 - Drag a card by its top row onto a folder. Double-click a folder to rename it,
   right-click to rename or delete.
+- Click the circle beside a card's × to mark it read: the card shrinks and greys
+  out. The filter in the header shows all saves, unread, read, media, links, or
+  saves with your own note.
 - <kbd>/</kbd> or <kbd>⌘</kbd><kbd>F</kbd> searches. Every word has to match,
   and tags count.
 - <kbd>⌘</kbd><kbd>2</kbd> to <kbd>⌘</kbd><kbd>9</kbd> filter by site,
@@ -124,10 +129,12 @@ Connect Hermes, Claude Code or Claude Desktop in Settings, under **AI assistants
 then ask it things like "what did I save about Rust?". Other assistants that
 support MCP can use the setup shown under **Other assistant**.
 
-Assistants can search and read your saves, but can't change them, and Nota
-doesn't need to be open. Nota only talks to them on your computer, but what an
-assistant reads goes to its AI provider. Saved posts are written by other people,
-so an assistant could be misled by text inside one.
+You can also ask it to organize them, like "tag my untagged saves". Assistants
+can search and read your saves, add tags and move saves to folders, but can't
+remove tags, edit or delete saves. Searching works with Nota closed; organizing
+needs it open. Nota only talks to them on your computer, but what an assistant
+reads goes to its AI provider. Saved posts are written by other people, so an
+assistant could be misled by text inside one, and mislabel your saves.
 
 ## Development
 
