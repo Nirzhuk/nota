@@ -82,12 +82,12 @@ export const Card = memo(function Card({ n, folders, isNew, expanded, selected, 
     if (!el) return setFull(0);
     const measure = () => {
       setFull(el.scrollHeight);
-      setPreview(parseFloat(getComputedStyle(el).lineHeight) * 10 + 2);
+      setPreview(parseFloat(getComputedStyle(el).lineHeight) * (n.read ? 3 : 10) + 2);
     };
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [n.text]);
+  }, [n.text, n.read]);
   // Expanding animates max-height to the measured height; collapsing animates back to 10 lines.
   const expand = () => {
     if (window.getSelection()?.isCollapsed !== false) onToggle(n.id); // not while selecting text

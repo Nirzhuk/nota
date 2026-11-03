@@ -246,7 +246,7 @@ article.new { transition: border-color 150ms ease, opacity 240ms var(--ease-out)
 article.read { padding: 7px 9px; opacity: 0.65; }
 article.read:hover, article.read:focus-within { opacity: 0.9; }
 article.read h3, article.read p { font-size: 11px; }
-article.read p.text { max-height: calc(1.45em * 3); }
+article.read p.text:not(.open) { max-height: calc(1.45em * 3); }
 article.read .media, article.read .video { max-height: 80px; margin-top: 6px; }
 
 .meta { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; padding-right: 44px; color: var(--dim); cursor: grab; }
