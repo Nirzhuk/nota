@@ -1,39 +1,73 @@
 ---
 import Base from "../layouts/base.astro";
-import Nota from "../components/nota.astro";
 import { REPO } from "../release";
 ---
-<Base title="Privacy Policy | Nota" description="Privacy policy for the Nota browser extension, the Nota app and this website.">
+<Base title="Privacy Policy | Nota" description="Privacy policy for the Nota browser extension, the Nota desktop app and the nota.nirzhuk.dev website.">
   <article class="wrap prose">
     <a class="textlink caption-2 back" href="/">Back to the home page</a>
     <h1 class="heading-2">Privacy Policy</h1>
-    <p class="caption-2 dim">Last updated: November 6, 2026</p>
-    <p class="body-3 dim">This policy covers the <Nota /> browser extension, the <Nota /> desktop app and this website. <Nota /> has no account and no server of its own. Nothing you save is sent to the developer.</p>
+    <p class="caption-2 dim">Effective date: November 6, 2026</p>
 
-    <h2 class="heading-5">What the extension handles</h2>
-    <p class="body-3 dim">The extension only reads a page when you save something from it: by liking or bookmarking a post on a supported site, clicking the toolbar button, using the right-click menu, the keyboard shortcut, or double-tapping Shift over a link. For that item it reads the page address, title, text, author name and image links.</p>
-    <p class="body-3 dim">When you start an import, it reads your saved posts on Reddit, your bookmarks on X or your stars on GitHub, using the session you are already signed in with in your browser. It never reads, stores or sends your passwords or cookies.</p>
-    <p class="body-3 dim">It keeps its settings, a short list of recent saves, and saves waiting for the app to open, in your browser's extension storage.</p>
+    <p class="body-3 dim">This Privacy Policy describes how Nota ("Nota", "we", "us" or "our") handles information when you use the Nota browser extension (the "Extension"), the Nota desktop application (the "App") and the website at nota.nirzhuk.dev (the "Website"), together the "Services". By using the Services, you agree to this Privacy Policy.</p>
 
-    <h2 class="heading-5">Where it goes</h2>
-    <p class="body-3 dim">Saves go to the <Nota /> app on your own computer, at the local address 127.0.0.1. The app writes them to a file on your disk. No data from the extension goes to the developer or to any third party.</p>
-    <p class="body-3 dim">The extension and the app contain no analytics, ads or tracking. Your data is never sold, never used for advertising, never used to judge creditworthiness, and never shared or transferred to anyone. The use of information received from Chrome APIs adheres to the <a class="textlink" href="https://developer.chrome.com/docs/webstore/program-policies/user-data-faq">Chrome Web Store User Data Policy</a>, including the Limited Use requirements.</p>
+    <h2 class="heading-5">1. Summary</h2>
+    <p class="body-3 dim">Nota is a local-first tool. It has no user accounts and no servers that receive your data. Content you save with the Extension is sent only to the App running on your own computer and stored on your own device. We do not collect, receive, sell or share the content you save.</p>
 
-    <h2 class="heading-5">What the app connects to</h2>
-    <p class="body-3 dim">The app fetches images and thumbnails from the sites your saves came from, and checks GitHub for new versions. Those sites see those requests the way they see any other visit.</p>
+    <h2 class="heading-5">2. Information the Extension handles</h2>
+    <p class="body-3 dim">The Extension processes the following information only when you take an action to save something, such as liking or bookmarking a post on a supported site, clicking the toolbar button, choosing a "Save to Nota" item from the right-click menu, pressing the keyboard shortcut, or double-tapping Shift over a link:</p>
+    <ul class="body-3 dim">
+      <li><strong>Website content:</strong> the title, text, selected text, author name, and image and video links of the item you save.</li>
+      <li><strong>Web browsing activity:</strong> the address (URL) of the page or link you save.</li>
+      <li><strong>Imported saves:</strong> when you start an import, your saved posts on Reddit, bookmarks on X, or starred repositories on GitHub. The Extension reads these using the session you are already signed in with in your browser. It does not read, store or transmit your passwords, cookies or authentication tokens.</li>
+      <li><strong>Extension settings:</strong> your preferences, a short list of recent saves, and saves waiting to be delivered while the App is closed. These are kept in your browser's local extension storage.</li>
+    </ul>
+    <p class="body-3 dim">The Extension does not record your browsing history, does not read pages you have not chosen to save from, and does not collect personally identifiable information, health, financial, location or communications data.</p>
 
-    <h2 class="heading-5">Deleting your data</h2>
-    <p class="body-3 dim">Delete any save in the app. Uninstalling the extension removes its storage. Uninstalling the app and deleting its data folder removes everything else.</p>
+    <h2 class="heading-5">3. Information the App handles</h2>
+    <p class="body-3 dim">The App receives saves from the Extension over a local connection (127.0.0.1) and stores them in a file on your computer. To display your saves, the App downloads images and thumbnails from the websites your saves came from. The App also contacts GitHub to check for new versions. These websites receive standard request information, such as your IP address, as with any other visit.</p>
 
-    <h2 class="heading-5">This website</h2>
-    <p class="body-3 dim">This site uses <a class="textlink" href="https://openpanel.dev">OpenPanel</a> to count visits: page views, referrer, device and browser type, and country. It is cookieless and doesn't follow you across other sites. <a class="textlink" href="https://openpanel.dev/privacy">OpenPanel's privacy policy</a> covers that data. The company hosting the site may keep ordinary server logs. Downloads come from GitHub, which has its own privacy policy.</p>
+    <h2 class="heading-5">4. Information the Website collects</h2>
+    <p class="body-3 dim">The Website uses <a class="textlink" href="https://openpanel.dev">OpenPanel</a>, a cookieless analytics service, to count visits. It records page views, referrer, device and browser type, and country. It does not use cookies and does not track you across other websites. <a class="textlink" href="https://openpanel.dev/privacy">OpenPanel's privacy policy</a> applies to that data. Our hosting provider may keep standard server logs. App downloads are served by GitHub, which has its own privacy policy.</p>
 
-    <h2 class="heading-5">Changes and contact</h2>
-    <p class="body-3 dim">Changes to this policy are posted on this page with a new date. For questions, open an issue on <a class="textlink" href={`${REPO}/issues`}>GitHub</a>. The code is public, so you can also check all of this yourself.</p>
+    <h2 class="heading-5">5. How we use information</h2>
+    <p class="body-3 dim">Information handled by the Extension and the App is used only to provide their single purpose: saving content you choose and showing it to you in the App. Website analytics are used only to understand how many people visit the Website.</p>
+
+    <h2 class="heading-5">6. Sharing and disclosure</h2>
+    <p class="body-3 dim">We do not sell, rent, trade or transfer your information to third parties. We do not use it for advertising, for purposes unrelated to the Extension's single purpose, or to determine creditworthiness or for lending. Because your saves never reach us, we have no saved content to disclose.</p>
+
+    <h2 class="heading-5">7. Extension permissions</h2>
+    <ul class="body-3 dim">
+      <li><strong>storage:</strong> keeps your settings, recent saves and pending saves on your device.</li>
+      <li><strong>alarms:</strong> retries delivering pending saves to the App once a minute.</li>
+      <li><strong>scripting and activeTab:</strong> reads the page you choose to save, when you click the toolbar button or use the shortcut.</li>
+      <li><strong>contextMenus:</strong> adds "Save page to Nota", "Save link to Nota", "Save image to Nota" and "Save selection to Nota" to the right-click menu.</li>
+      <li><strong>Host access to 127.0.0.1:</strong> sends saves to the App on your computer.</li>
+      <li><strong>Host access to supported sites</strong> (X, Reddit, YouTube, GitHub, Hacker News, Bluesky, Instagram): detects when you like or bookmark a post so it can be saved, and runs imports you start.</li>
+      <li><strong>Optional access to other sites:</strong> requested only when you choose to watch a specific site from the Extension's popup, and only used on that site.</li>
+    </ul>
+
+    <h2 class="heading-5">8. Data retention and deletion</h2>
+    <p class="body-3 dim">Your saves stay on your device until you delete them. You can delete any save in the App. Uninstalling the Extension removes its local storage. Uninstalling the App and deleting its data folder removes all remaining saved data.</p>
+
+    <h2 class="heading-5">9. Security</h2>
+    <p class="body-3 dim">Data passes between the Extension and the App only over a local connection on your computer and is never sent over the internet to us. You are responsible for the security of your own device.</p>
+
+    <h2 class="heading-5">10. Children's privacy</h2>
+    <p class="body-3 dim">The Services are not directed at children under 13, and we do not knowingly collect information from children.</p>
+
+    <h2 class="heading-5">11. Chrome Web Store Limited Use</h2>
+    <p class="body-3 dim">The use of information received from Chrome APIs adheres to the <a class="textlink" href="https://developer.chrome.com/docs/webstore/program-policies/user-data-faq">Chrome Web Store User Data Policy</a>, including the Limited Use requirements.</p>
+
+    <h2 class="heading-5">12. Changes to this policy</h2>
+    <p class="body-3 dim">We may update this Privacy Policy from time to time. Changes are posted on this page with a new effective date.</p>
+
+    <h2 class="heading-5">13. Contact</h2>
+    <p class="body-3 dim">If you have questions about this Privacy Policy, open an issue on <a class="textlink" href={`${REPO}/issues`}>GitHub</a>.</p>
   </article>
 </Base>
 <style>
   .prose { display: flex; flex-direction: column; gap: var(--s-200); max-width: 680px; padding-top: 128px; padding-bottom: var(--s-900); }
   .prose h2 { margin-top: var(--s-200); }
+  .prose ul { display: flex; flex-direction: column; gap: var(--s-100); padding-left: 1.25em; list-style: disc; }
   .back { align-self: flex-start; }
 </style>
