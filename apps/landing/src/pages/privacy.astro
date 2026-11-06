@@ -3,16 +3,33 @@ import Base from "../layouts/base.astro";
 import Nota from "../components/nota.astro";
 import { REPO } from "../release";
 ---
-<Base title="Privacy | Nota" description="What this site and the Nota app do with your data.">
+<Base title="Privacy Policy | Nota" description="Privacy policy for the Nota browser extension, the Nota app and this website.">
   <article class="wrap prose">
     <a class="textlink caption-2 back" href="/">Back to the home page</a>
-    <h1 class="heading-2">Privacy</h1>
+    <h1 class="heading-2">Privacy Policy</h1>
+    <p class="caption-2 dim">Last updated: November 6, 2026</p>
+    <p class="body-3 dim">This policy covers the <Nota /> browser extension, the <Nota /> desktop app and this website. <Nota /> has no account and no server of its own. Nothing you save is sent to the developer.</p>
+
+    <h2 class="heading-5">What the extension handles</h2>
+    <p class="body-3 dim">The extension only reads a page when you save something from it: by liking or bookmarking a post on a supported site, clicking the toolbar button, using the right-click menu, the keyboard shortcut, or double-tapping Shift over a link. For that item it reads the page address, title, text, author name and image links.</p>
+    <p class="body-3 dim">When you start an import, it reads your saved posts on Reddit, your bookmarks on X or your stars on GitHub, using the session you are already signed in with in your browser. It never reads, stores or sends your passwords or cookies.</p>
+    <p class="body-3 dim">It keeps its settings, a short list of recent saves, and saves waiting for the app to open, in your browser's extension storage.</p>
+
+    <h2 class="heading-5">Where it goes</h2>
+    <p class="body-3 dim">Saves go to the <Nota /> app on your own computer, at the local address 127.0.0.1. The app writes them to a file on your disk. No data from the extension goes to the developer or to any third party.</p>
+    <p class="body-3 dim">The extension and the app contain no analytics, ads or tracking. Your data is never sold, never used for advertising, never used to judge creditworthiness, and never shared or transferred to anyone. The use of information received from Chrome APIs adheres to the <a class="textlink" href="https://developer.chrome.com/docs/webstore/program-policies/user-data-faq">Chrome Web Store User Data Policy</a>, including the Limited Use requirements.</p>
+
+    <h2 class="heading-5">What the app connects to</h2>
+    <p class="body-3 dim">The app fetches images and thumbnails from the sites your saves came from, and checks GitHub for new versions. Those sites see those requests the way they see any other visit.</p>
+
+    <h2 class="heading-5">Deleting your data</h2>
+    <p class="body-3 dim">Delete any save in the app. Uninstalling the extension removes its storage. Uninstalling the app and deleting its data folder removes everything else.</p>
+
     <h2 class="heading-5">This website</h2>
     <p class="body-3 dim">This site uses <a class="textlink" href="https://openpanel.dev">OpenPanel</a> to count visits: page views, referrer, device and browser type, and country. It is cookieless and doesn't follow you across other sites. <a class="textlink" href="https://openpanel.dev/privacy">OpenPanel's privacy policy</a> covers that data. The company hosting the site may keep ordinary server logs. Downloads come from GitHub, which has its own privacy policy.</p>
-    <h2 class="heading-5">The <Nota /> app and extension</h2>
-    <p class="body-3 dim"><Nota /> has no account and no server of its own. The extension sends your saves to the app on your computer, which keeps them in a file on your disk. <Nota /> fetches images and thumbnails from the site they came from, and checks GitHub for new versions. Those sites see those requests the way they see any other.</p>
-    <h2 class="heading-5">Questions</h2>
-    <p class="body-3 dim">Open an issue on <a class="textlink" href={`${REPO}/issues`}>GitHub</a>. The code is public, so you can also check all of this yourself.</p>
+
+    <h2 class="heading-5">Changes and contact</h2>
+    <p class="body-3 dim">Changes to this policy are posted on this page with a new date. For questions, open an issue on <a class="textlink" href={`${REPO}/issues`}>GitHub</a>. The code is public, so you can also check all of this yourself.</p>
   </article>
 </Base>
 <style>

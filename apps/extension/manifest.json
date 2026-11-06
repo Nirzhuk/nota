@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Nota",
-  "version": "0.1.0",
-  "description": "Save anything to Nota. X, Reddit, YouTube, GitHub, Hacker News, Bluesky, Instagram.",
+  "version": "0.1.1",
+  "description": "Save posts, videos and pages to Nota with a like, a bookmark or one click.",
   "icons": {
     "32": "icons/32.png",
     "128": "icons/128.png"
@@ -47,21 +47,13 @@
   "content_scripts": [
     {
       "matches": [
-        "http://*/*",
-        "https://*/*"
-      ],
-      "js": [
-        "content-hover.js"
-      ]
-    },
-    {
-      "matches": [
         "https://x.com/*",
         "https://twitter.com/*"
       ],
       "js": [
         "shared.js",
-        "content-x.js"
+        "content-x.js",
+        "content-hover.js"
       ]
     },
     {
@@ -70,7 +62,8 @@
       ],
       "js": [
         "shared.js",
-        "content-reddit.js"
+        "content-reddit.js",
+        "content-hover.js"
       ]
     },
     {
@@ -79,7 +72,8 @@
       ],
       "js": [
         "shared.js",
-        "content-youtube.js"
+        "content-youtube.js",
+        "content-hover.js"
       ]
     },
     {
@@ -88,7 +82,8 @@
       ],
       "js": [
         "shared.js",
-        "content-github.js"
+        "content-github.js",
+        "content-hover.js"
       ]
     },
     {
@@ -97,7 +92,8 @@
       ],
       "js": [
         "shared.js",
-        "content-hn.js"
+        "content-hn.js",
+        "content-hover.js"
       ]
     },
     {
@@ -106,7 +102,8 @@
       ],
       "js": [
         "shared.js",
-        "content-bluesky.js"
+        "content-bluesky.js",
+        "content-hover.js"
       ]
     },
     {
@@ -115,7 +112,8 @@
       ],
       "js": [
         "shared.js",
-        "content-instagram.js"
+        "content-instagram.js",
+        "content-hover.js"
       ]
     }
   ]
